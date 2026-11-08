@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>JOAN GOMOKU ｜ 五子棋對決 (v2026.11.07)</title>
+  <title>JOAN GOMOKU ｜ 棋藝異想世界 (v2026.11.08.7)</title>
   <style>
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
     body {
@@ -40,7 +40,7 @@
     }
     .btn-gold { background-color: #C89666; color: #3E2723; border: none; }
     .btn-brown { background-color: #3E2723; color: #FAF6F0; }
-    .btn-green { background-color: #1F6F5B; color: #FFFFFF; }
+    .btn-green { background-color: #1F6F5B; color: #FFFFFF; border: none; }
     .btn-light { background-color: #FAF6F0; color: #3E2723; }
     .btn-gray { background-color: #D7CCC8; color: #3E2723; border: none; }
     .card {
@@ -54,41 +54,51 @@
       transition: transform 0.1s;
     }
     .card:active { transform: scale(0.98); }
+    
+    /* 15x15 棋盤容器 */
     .board-wrap {
       width: 100%;
       max-width: 400px;
+      aspect-ratio: 1 / 1;
       margin: 0 auto;
       background-color: #DCB386;
       border: 4px solid #5A3825;
       border-radius: 10px;
-      padding: 6px;
+      padding: 12px;
+      box-sizing: border-box;
       box-shadow: 0 6px 16px rgba(0,0,0,0.22);
       position: relative;
-    }
-    .board-row {
-      display: flex;
-      width: 100%;
-      height: 24px;
+      display: grid;
+      grid-template-columns: repeat(15, 1fr);
+      grid-template-rows: repeat(15, 1fr);
+      touch-action: manipulation;
+      contain: layout paint;
     }
     .board-cell {
-      flex: 1;
-      height: 24px;
       position: relative;
       display: flex;
       align-items: center;
       justify-content: center;
       cursor: pointer;
+      width: 100%;
+      height: 100%;
+      min-width: 0;
+      min-height: 0;
+      contain: layout style;
     }
-    .h-line {
+    /* 網格線背景 */
+    .board-cell::before {
+      content: '';
       position: absolute;
-      top: 11.5px;
+      top: 50%;
       left: 0;
       right: 0;
       height: 1px;
       background-color: #6E472B;
       pointer-events: none;
     }
-    .v-line {
+    .board-cell::after {
+      content: '';
       position: absolute;
       left: 50%;
       top: 0;
@@ -97,6 +107,11 @@
       background-color: #6E472B;
       pointer-events: none;
     }
+    .board-cell[data-col="0"]::before { left: 50%; }
+    .board-cell[data-col="14"]::before { right: 50%; }
+    .board-cell[data-row="0"]::after { top: 50%; }
+    .board-cell[data-row="14"]::after { bottom: 50%; }
+
     .star {
       position: relative;
       z-index: 2;
@@ -106,21 +121,30 @@
       background-color: #4A2E1B;
       pointer-events: none;
     }
-    .hint-mark {
+    .crystal {
       position: relative;
       z-index: 3;
-      width: 16px;
-      height: 16px;
-      border-radius: 50%;
-      border: 2px dashed #1F6F5B;
-      background-color: rgba(31,111,91,0.28);
+      width: 15px;
+      height: 15px;
+      border-radius: 4px;
+      background: radial-gradient(circle, #FFD700, #FF8C00);
+      box-shadow: 0 0 7px #FFD700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 9px;
       pointer-events: none;
+      animation: crystalPulse 1.8s infinite alternate;
+    }
+    @keyframes crystalPulse {
+      0% { transform: scale(0.9); box-shadow: 0 0 4px #FF9800; }
+      100% { transform: scale(1.1); box-shadow: 0 0 10px #FFD700; }
     }
     .stone {
       position: relative;
       z-index: 5;
-      width: 19px;
-      height: 19px;
+      width: 82%;
+      height: 82%;
       border-radius: 50%;
       box-shadow: 0 2px 3px rgba(0,0,0,0.45);
       display: flex;
@@ -131,6 +155,22 @@
     .stone-black { background-color: #111111; border: 1.5px solid #000000; }
     .stone-white { background-color: #FFFFFF; border: 1.5px solid #666666; }
     .stone-win { border: 2.5px solid #F59E0B !important; box-shadow: 0 0 8px 2px #F59E0B !important; }
+    .stone-shielded { box-shadow: 0 0 10px 3px #00E5FF, inset 0 0 6px #00E5FF !important; border-color: #00E5FF !important; }
+
+    /* 烈焰爆裂動畫 */
+    @keyframes flameExplosion {
+      0% { transform: scale(0.3); opacity: 1; filter: brightness(2); background: radial-gradient(circle, #FFF, #FF5722); box-shadow: 0 0 15px #FF5722; }
+      50% { transform: scale(1.6); opacity: 0.95; filter: brightness(1.6); background: radial-gradient(circle, #FFEB3B, #FF9800); box-shadow: 0 0 30px #FF9800; }
+      100% { transform: scale(2.2); opacity: 0; }
+    }
+    .burn-anim {
+      position: absolute;
+      inset: -6px;
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 25;
+      animation: flameExplosion 0.55s ease-out forwards;
+    }
     .last-dot {
       width: 5px;
       height: 5px;
@@ -138,6 +178,45 @@
       background-color: #E63946;
     }
     .hidden { display: none !important; }
+
+    /* 悄悄話卡片換句淡入效果 */
+    .fade-text {
+      animation: fadeInText 0.28s ease-out;
+    }
+    @keyframes fadeInText {
+      from { opacity: 0.3; transform: translateY(-2px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* 玩法教學彈窗樣式 */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background-color: rgba(30, 20, 15, 0.75);
+      backdrop-filter: blur(3px);
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      animation: fadeIn 0.2s ease-out;
+    }
+    .modal-card {
+      background-color: #FFFDF9;
+      border: 3px solid #C89666;
+      border-radius: 14px;
+      max-width: 420px;
+      width: 100%;
+      max-height: 88vh;
+      overflow-y: auto;
+      padding: 20px 18px;
+      box-shadow: 0 12px 32px rgba(0,0,0,0.35);
+      box-sizing: border-box;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: scale(0.96); }
+      to { opacity: 1; transform: scale(1); }
+    }
   </style>
 </head>
 <body>
@@ -146,7 +225,7 @@
       <div style="background:#C89666; color:#3E2723; width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:800;">五</div>
       <div>
         <div style="font-size:15px; font-weight:800;">JOAN GOMOKU ｜ 棋藝異想</div>
-        <div style="font-size:10px; color:#E0C9A6;">五大對戰與殘局解謎模式</div>
+        <div style="font-size:10px; color:#E0C9A6;">靈能晶石與多元對戰模式</div>
       </div>
     </div>
     <div style="display:flex; gap:6px;">
@@ -160,17 +239,22 @@
     <div id="viewMenu">
       <div class="card" style="background:#3E2723; color:#FAF6F0; border:2px solid #C89666; cursor:default;">
         <div style="font-size:17px; font-weight:bold; margin-bottom:4px;">✨ 棋藝異想世界・五子棋對決</div>
-        <div style="font-size:12px; color:#D7CCC8;">點選交叉點立即落子・具備動態悄悄話與 5 大豐富模式</div>
+        <div style="font-size:12px; color:#D7CCC8;">享受四階段難度與奇幻靈能晶石對局！</div>
       </div>
 
       <div class="card" onclick="openModeConfig('AI')">
-        <div style="font-size:16px; font-weight:bold; margin-bottom:4px;">🤖 MODE 01｜AI 對戰模式</div>
-        <div style="font-size:12px; color:#6D4C41;">自由選擇普通、困難、大師級 AI 與黑白先後手。</div>
+        <div style="font-size:16px; font-weight:bold; margin-bottom:4px;">🤖 MODE 01｜AI 標準對戰</div>
+        <div style="font-size:12px; color:#6D4C41;">支援「簡單、普通、困難、大師」四階段 AI 與黑白先後手。</div>
       </div>
 
-      <div class="card" onclick="startPuzzleMode()">
-        <div style="font-size:16px; font-weight:bold; margin-bottom:4px;">🧩 MODE 02｜殘局解謎模式（30 題）</div>
-        <div style="font-size:12px; color:#6D4C41;">挑戰基礎、進階與大師級必勝殘局，即時通關結算。</div>
+      <!-- MODE 02：靈能晶石棋陣 -->
+      <div class="card" style="cursor:default;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+          <div style="font-size:16px; font-weight:bold;">⚡ MODE 02｜靈能晶石棋陣</div>
+          <button class="btn btn-light" style="padding:4px 8px; font-size:11px; border-color:#C89666;" onclick="event.stopPropagation(); openTutorialModal();">📖 玩法教學</button>
+        </div>
+        <div style="font-size:12px; color:#6D4C41; margin-bottom:10px;">棋盤隨機生成烈焰與護盾晶石，AI 已學會審時度勢、精準引爆！</div>
+        <button class="btn btn-gold" style="width:100%; padding:8px; font-size:13px;" onclick="startCrystalMode()">⚡ 開始晶石棋陣</button>
       </div>
 
       <div class="card" onclick="startCampaignMode(1)">
@@ -184,8 +268,8 @@
       </div>
 
       <div class="card" onclick="startDailyMode()">
-        <div style="font-size:16px; font-weight:bold; margin-bottom:4px;" id="dailyCardTitle">📅 MODE 05｜每日挑戰</div>
-        <div style="font-size:12px; color:#6D4C41;" id="dailyCardDesc">台北時區每日固定殘局，挑戰連續過關紀錄！</div>
+        <div style="font-size:16px; font-weight:bold; margin-bottom:4px;">📅 MODE 05｜每日晶石對決</div>
+        <div style="font-size:12px; color:#6D4C41;">台北時區每日固定晶石分佈，挑戰連續勝場紀錄！</div>
       </div>
     </div>
 
@@ -193,11 +277,12 @@
     <div id="viewConfig" class="hidden">
       <div class="card" style="cursor:default;">
         <div id="configTitle" style="font-size:16px; font-weight:bold; margin-bottom:8px;">設定對局參數</div>
-        <div style="font-size:12px; color:#6D4C41; margin-bottom:6px;">選擇 AI 難度：</div>
-        <div style="display:flex; gap:6px; margin-bottom:10px;">
-          <button class="btn btn-light" id="cfgDiffNORMAL" style="flex:1;" onclick="setCfgDiff('NORMAL')">普通</button>
-          <button class="btn btn-brown" id="cfgDiffHARD" style="flex:1;" onclick="setCfgDiff('HARD')">困難</button>
-          <button class="btn btn-light" id="cfgDiffMASTER" style="flex:1;" onclick="setCfgDiff('MASTER')">大師</button>
+        <div style="font-size:12px; color:#6D4C41; margin-bottom:6px;">選擇 AI 難度（四階段）：</div>
+        <div style="display:flex; gap:4px; margin-bottom:10px;">
+          <button class="btn btn-light" id="cfgDiffBEGINNER" style="flex:1; padding:6px 4px; font-size:11px;" onclick="setCfgDiff('BEGINNER')">簡單</button>
+          <button class="btn btn-light" id="cfgDiffNORMAL" style="flex:1; padding:6px 4px; font-size:11px;" onclick="setCfgDiff('NORMAL')">普通</button>
+          <button class="btn btn-brown" id="cfgDiffHARD" style="flex:1; padding:6px 4px; font-size:11px;" onclick="setCfgDiff('HARD')">困難</button>
+          <button class="btn btn-light" id="cfgDiffMASTER" style="flex:1; padding:6px 4px; font-size:11px;" onclick="setCfgDiff('MASTER')">大師</button>
         </div>
         <div style="font-size:12px; color:#6D4C41; margin-bottom:6px;">選擇執子顏色：</div>
         <div style="display:flex; gap:6px; margin-bottom:12px;">
@@ -216,60 +301,88 @@
       </div>
     </div>
 
-    <!-- 遊戲對戰與解謎主介面 -->
+    <!-- 遊戲對戰主介面 -->
     <div id="viewPlay" class="hidden">
-      <!-- 頂部資訊工具列 -->
       <div id="modeSubHeader" class="card" style="padding:8px 12px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; cursor:default;">
         <span id="subHeaderTitle" style="font-size:13px; font-weight:bold; color:#1F6F5B;">模式提示</span>
         <div id="subHeaderControl"></div>
       </div>
 
-      <!-- JOAN 悄悄話 -->
-      <div id="joanWhisperBox" style="background:#FAF3ED; border:1px solid #D7CCC8; border-radius:8px; padding:8px 12px; margin-bottom:8px; font-size:12px; color:#5D4037; font-style:italic;">
-        ✨ JOAN 悄悄話：這步棋充滿了木質香氣與無限可能呢……
+      <!-- 固定 48px 高度，點擊卡片可隨時更換悄悄話，支援完整折行顯示且零推擠 -->
+      <div id="joanWhisperBox" onclick="manualShuffleWhisper()" title="點擊換一句悄悄話" style="background:#FAF3ED; border:1px solid #D7CCC8; border-radius:8px; padding:4px 12px; margin-bottom:8px; font-size:12px; color:#5D4037; font-style:italic; height:48px; min-height:48px; max-height:48px; box-sizing:border-box; display:flex; align-items:center; line-height:1.35; white-space:normal; word-break:break-word; overflow:hidden; cursor:pointer;">
+        ✨ JOAN 悄悄話：棋盤線條已經施完魔法，變得筆直完美囉！（點擊可換一句）
       </div>
 
-      <!-- 狀態列 -->
-      <div style="display:flex; justify-content:space-between; align-items:center; background:#EAE0D5; padding:8px 12px; border-radius:8px; margin-bottom:10px; font-size:13px; font-weight:bold;">
+      <!-- 固定 38px 狀態列高度 -->
+      <div style="display:flex; justify-content:space-between; align-items:center; background:#EAE0D5; padding:0 12px; border-radius:8px; margin-bottom:10px; font-size:13px; font-weight:bold; height:38px; min-height:38px; box-sizing:border-box;">
         <div id="statusText">● 輪到你落子</div>
         <div id="statusExtra">手數：0</div>
       </div>
 
-      <!-- 棋盤 -->
       <div class="board-wrap" id="boardGrid">
-        <div id="pauseOverlay" class="hidden" style="position:absolute; inset:0; background:rgba(62,39,35,0.85); z-index:20; display:flex; flexDirection:column; align-items:center; justify-content:center; border-radius:6px; color:#FFF;">
+        <div id="pauseOverlay" class="hidden" style="position:absolute; inset:0; background:rgba(62,39,35,0.85); z-index:20; display:flex; flex-direction:column; align-items:center; justify-content:center; border-radius:6px; color:#FFF;">
           <div style="font-size:18px; font-weight:bold; margin-bottom:12px;">⏸ 對局暫停中</div>
           <button class="btn btn-gold" onclick="togglePause()">繼續對局</button>
         </div>
       </div>
 
-      <!-- 底部按鈕區 -->
       <div style="display:flex; gap:8px; margin-top:12px;">
         <button class="btn btn-gray" id="btnUndo" style="flex:1; padding:11px;" onclick="undoMove()">↩ 悔棋</button>
-        <button class="btn btn-green hidden" id="btnHint" style="flex:1; padding:11px;" onclick="toggleHint()">💡 提示</button>
         <button class="btn btn-gold" style="flex:1; padding:11px;" onclick="restartCurrentGame()">🔄 重新開始</button>
       </div>
 
-      <!-- 結算彈窗 -->
       <div id="resultBox" class="card hidden" style="margin-top:14px; text-align:center; border:2px solid #C89666; cursor:default;">
         <div id="resultTitle" style="font-size:17px; font-weight:bold; margin-bottom:6px; color:#1F6F5B;"></div>
         <div id="resultDesc" style="font-size:12px; color:#5D4037; margin-bottom:12px;"></div>
         <div style="display:flex; gap:8px; justify-content:center;">
           <button class="btn btn-gray" onclick="restartCurrentGame()">重新挑戰</button>
-          <button class="btn btn-gold hidden" id="btnNextLevel" onclick="nextLevelOrPuzzle()">下一關 →</button>
+          <button class="btn btn-gold hidden" id="btnNextLevel" onclick="nextCampaignLevel()">下一關 →</button>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- 📖 靈能晶石玩法教學彈窗 -->
+  <div id="tutorialModal" class="modal-overlay hidden" onclick="closeTutorialModal()">
+    <div class="modal-card" onclick="event.stopPropagation()">
+      <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid #E0C9A6; padding-bottom:10px; margin-bottom:14px;">
+        <div style="font-size:17px; font-weight:800; color:#3E2723;">⚡ 靈能晶石棋陣 ｜ 玩法教學</div>
+        <button onclick="closeTutorialModal()" style="background:none; border:none; font-size:20px; font-weight:bold; color:#7D5233; cursor:pointer;">✕</button>
+      </div>
+
+      <div style="font-size:13px; line-height:1.6; color:#4E342E;">
+        <p style="margin-top:0;">歡迎來到 <strong>JOAN GOMOKU</strong> 原創的奇幻棋局！在晶石棋陣中，盤面上蘊含著神祕的遠古能量：</p>
+        
+        <div style="background:#FFF3E0; border-left:4px solid #FF8C00; padding:10px 12px; border-radius:6px; margin-bottom:12px;">
+          <div style="font-weight:bold; color:#E65100; font-size:14px; margin-bottom:4px;">🔥 烈焰晶石 (Flame Crystal)</div>
+          <div>落子佔領該格時瞬間引爆！<strong>消滅半徑兩格內（5×5 範圍）所有敵方無護盾棋子</strong>，附帶火焰爆破震撼音效！AI 也會懂得伺機引爆或防守搶佔！</div>
+        </div>
+
+        <div style="background:#E8F5E9; border-left:4px solid #2E7D32; padding:10px 12px; border-radius:6px; margin-bottom:12px;">
+          <div style="font-weight:bold; color:#1B5E20; font-size:14px; margin-bottom:4px;">🛡️ 護盾晶石 (Shield Crystal)</div>
+          <div>佔領後該子獲得<strong>「金剛不壞之身」</strong>，永遠不會被烈焰焚燬，成為棋盤上最不可動搖的堅固要塞與連珠支點！</div>
+        </div>
+
+        <div style="background:#F5F5F5; border-left:4px solid #757575; padding:10px 12px; border-radius:6px; margin-bottom:14px;">
+          <div style="font-weight:bold; color:#333; font-size:14px; margin-bottom:4px;">🎯 終極勝利條件</div>
+          <div>常規五子連線規則依然適用！在破壞與守護的晶石風暴中，率先完成五子相連者即為棋界霸主！</div>
+        </div>
+      </div>
+
+      <button class="btn btn-gold" style="width:100%; padding:12px; font-size:14px; font-weight:bold;" onclick="closeTutorialModal()">我懂了，立刻開戰！</button>
     </div>
   </div>
 
   <script>
     var SIZE = 15, EMPTY = 0, BLACK = 1, WHITE = 2;
     var board = [];
+    var crystalBoard = [];
+    var shieldBoard = [];
     var historyStack = [];
     var currentTurn = BLACK;
     var playerColor = BLACK;
     var aiDifficulty = 'HARD';
-    var gameMode = 'AI'; // AI, PUZZLE, CAMPAIGN, TIMED, DAILY
+    var gameMode = 'AI';
     var isOver = false;
     var aiBusy = false;
     var soundOn = true;
@@ -279,47 +392,80 @@
     var audioCtx = null;
     var isPaused = false;
 
-    // 狀態變數
-    var currentPuzzleIndex = 0;
     var currentCampaignLevel = 1;
     var timedLimitSec = 20;
     var timedRemaining = 20;
     var timedTimer = null;
-    var showHintFlag = false;
 
-    // 30道殘局題庫
-    var PUZZLE_DB = [
-      { id:1, group:'基礎', title:'01｜誘敵深入・一步殺', desc:'黑先。尋找關鍵交叉點直接連五破陣。', stones:[{r:7,c:5,p:1},{r:7,c:6,p:1},{r:7,c:8,p:1},{r:6,c:6,p:2},{r:8,c:7,p:2}], targets:[{r:7,c:7}] },
-      { id:2, group:'基礎', title:'02｜暗渡陳倉', desc:'黑先。突破白棋斜線防線。', stones:[{r:4,c:4,p:1},{r:5,c:5,p:1},{r:7,c:7,p:1},{r:6,c:7,p:2},{r:7,c:6,p:2}], targets:[{r:6,c:6}] },
-      { id:3, group:'基礎', title:'03｜絕境反擊', desc:'黑先。阻斷白棋聽牌要害。', stones:[{r:5,c:3,p:2},{r:5,c:4,p:2},{r:5,c:5,p:2},{r:5,c:6,p:2},{r:6,c:5,p:1}], targets:[{r:5,c:7}] },
-      { id:4, group:'基礎', title:'04｜中路突圍', desc:'黑先。突破天元周邊夾擊。', stones:[{r:7,c:4,p:1},{r:7,c:5,p:1},{r:7,c:7,p:1},{r:6,c:6,p:2},{r:8,c:6,p:2}], targets:[{r:7,c:6}] },
-      { id:5, group:'基礎', title:'05｜側翼合圍', desc:'黑先。左右夾擊迫使白棋崩潰。', stones:[{r:4,c:7,p:1},{r:5,c:7,p:1},{r:7,c:7,p:1},{r:6,c:6,p:2},{r:6,c:8,p:2}], targets:[{r:6,c:7}] }
+    // 🌟 超過 30 句豐富且多樣的 JOAN 悄悄話語錄庫
+    var whispers = [
+      "☕ 喝口熱咖啡再落子吧，思緒會變得無比清晰喔！",
+      "🚲 騎單車迎風吹過，棋盤上的思路也跟著開闊了。",
+      "🌟 歡迎來到 JOAN PLAYGROUND，今天也是充滿靈感的一天！",
+      "🍵 溫熱的木質香氣，正在棋格與指尖悄悄蔓延。",
+      "☁️ 放輕鬆，深呼吸～下棋就像畫畫，每一手都是心境。",
+      "🍰 棋逢對手，不妨配上一塊提拉米蘇慢慢享受。",
+      "💡 JOAN 提示：別只盯著橫豎排，斜向視角常藏著絕妙生機！",
+      "✨ 這步棋落得真漂亮，連 AI 的木質演算法都在驚嘆。",
+      "👀 棋盤上的片刻安靜，往往預示著一場精妙的逆轉破局！",
+      "🎯 衝四、聽牌、雙活三...看誰能先捕捉到關鍵契機！",
+      "💭 靈光一閃！有時候跟隨直覺落子比深思熟慮更厲害。",
+      "⚡ 棋盤上的每一條線，都在譜寫專屬於你的精彩篇章！",
+      "🔍 搶先佈局關鍵樞紐，把對局的主動權牢牢握在手心。",
+      "🔥 烈焰晶石在隱隱發燙，看準時機能一舉炸飛敵陣防線！",
+      "🛡️ 堅不可摧的護盾就是最好支點，守得穩才能攻得狠。",
+      "🤖 AI 小聲嘀咕：『這步棋完全出乎我的矩陣預料！』",
+      "🔮 大師級 AI 正在偷偷查閱它的萬能落子筆記本喔！",
+      "🧩 棋盤上的微風徐徐，AI 正在重構它的木質靈魂。",
+      "⚡ AI 的心跳正在加速，它感受到你強大的佈局氣場了！",
+      "🎩 雙方有來有往，這真是一場賞心悅目的優雅對弈。",
+      "🌈 不管輸贏，沉浸在每一步棋的專注裡就是最棒的時光。",
+      "🎶 聽，棋子落在木盤上的清脆聲響，是最治癒的旋律。",
+      "🍃 棋局如人生，有攻有守、進退自如才是真功夫。",
+      "⚔️ 盤面佈局越來越緊湊了，神之一手即將在此誕生！",
+      "🐾 JOAN 的貓咪悄悄從桌邊走過，也在幫你暗中加油呢！",
+      "🌞 陽光灑在棋盤邊緣，為這場對決添上了一抹金黃。",
+      "🏆 每下一顆棋，你的棋感與眼界都在悄悄升級！",
+      "🥐 來份可頌補充能量，這場大師對弈值得細細品味。",
+      "⭐ 佈局就像繁星織網，不知不覺間勝勢已定。",
+      "🌊 心如止水，靜觀其變，對手的破綻自然浮現。"
     ];
-    // 補充到 10 題以上讓殘局豐富
-    for(var i=6; i<=30; i++) {
-      PUZZLE_DB.push({
-        id: i,
-        group: i<=10?'基礎':i<=20?'進階':'大師',
-        title: (i<10?'0':'')+i+'｜經典棋局解謎',
-        desc: '黑先。運用棋理與算力破解此局。',
-        stones: [{r:7,c:5,p:1},{r:7,c:6,p:1},{r:6,c:6,p:2},{r:8,c:6,p:2}],
-        targets: [{r:7,c:7}]
-      });
+
+    var lastWhisperIdx = -1;
+
+    function updateWhisper(customMsg) {
+      var box = document.getElementById('joanWhisperBox');
+      if (!box) return;
+      
+      var nextText = '';
+      if (customMsg) {
+        nextText = customMsg;
+      } else {
+        var nextIdx = Math.floor(Math.random() * whispers.length);
+        if (nextIdx === lastWhisperIdx && whispers.length > 1) {
+          nextIdx = (nextIdx + 1) % whispers.length;
+        }
+        lastWhisperIdx = nextIdx;
+        nextText = whispers[nextIdx];
+      }
+
+      box.classList.remove('fade-text');
+      void box.offsetWidth; // 強制重繪觸發動畫
+      box.textContent = nextText;
+      box.classList.add('fade-text');
     }
 
-    var whispers = [
-      "✨ JOAN 悄悄話：落子無悔，但這一步真的很漂亮呢！",
-      "☕ 喝口咖啡再下吧，AI 正在重構它的木質靈魂。",
-      "💡 JOAN 提示：別急著連五，佈局的藝術在於讓對手陷入沉思。",
-      "🚲 騎完單車回來了嗎？心靜自然平，下棋也是。",
-      "🌟 JOAN PLAYGROUND 的微風今天吹得棋盤有點溫暖。",
-      "🍵 溫熱的木質香氣，正在棋格之間悄悄蔓延。",
-      "🔮 大師級 AI 正在偷偷看你的落子筆記本喔！"
-    ];
+    // 點擊卡片手動抽換悄悄話彩蛋
+    function manualShuffleWhisper() {
+      updateWhisper();
+    }
 
-    function updateWhisper() {
-      var box = document.getElementById('joanWhisperBox');
-      if (box) box.textContent = whispers[Math.floor(Math.random() * whispers.length)];
+    function openTutorialModal() {
+      document.getElementById('tutorialModal').classList.remove('hidden');
+    }
+
+    function closeTutorialModal() {
+      document.getElementById('tutorialModal').classList.add('hidden');
     }
 
     function toggleSound() {
@@ -339,55 +485,107 @@
         gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
         gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + dur);
         osc.connect(gain);
-        gain.connect(ctx = audioCtx.destination);
+        gain.connect(audioCtx.destination);
         osc.start();
         osc.stop(audioCtx.currentTime + dur);
       } catch(e) {}
     }
 
+    function playExplosionTone() {
+      if (!soundOn) return;
+      try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        var now = audioCtx.currentTime;
+        var osc = audioCtx.createOscillator();
+        var gain = audioCtx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(260, now);
+        osc.frequency.exponentialRampToValueAtTime(45, now + 0.38);
+        gain.gain.setValueAtTime(0.5, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.38);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + 0.39);
+      } catch(e) {}
+    }
+
+    function triggerCrystalEffect(r, c, who) {
+      var cryType = crystalBoard[r][c];
+      if (cryType === 0) return false;
+      crystalBoard[r][c] = 0;
+
+      if (cryType === 1) {
+        // 🔥 烈焰晶石：引爆半徑 2 格（5x5 範圍）
+        var opp = (who === BLACK) ? WHITE : BLACK;
+        var burned = [];
+        for (var dr = -2; dr <= 2; dr++) {
+          for (var dc = -2; dc <= 2; dc++) {
+            var nr = r + dr, nc = c + dc;
+            if (nr >= 0 && nr < SIZE && nc >= 0 && nc < SIZE) {
+              if (board[nr][nc] === opp && !shieldBoard[nr][nc]) {
+                board[nr][nc] = EMPTY;
+                burned.push({ r: nr, c: nc });
+              }
+            }
+          }
+        }
+
+        playExplosionTone();
+
+        var blastCells = [{ r: r, c: c }].concat(burned);
+        blastCells.forEach(function(pos) {
+          var el = cellRefs[pos.r][pos.c];
+          if (el) {
+            var flame = document.createElement('div');
+            flame.className = 'burn-anim';
+            el.appendChild(flame);
+            setTimeout(function() { flame.remove(); }, 600);
+          }
+        });
+
+        if (burned.length > 0) {
+          var targetName = who === playerColor ? '敵方' : '你的';
+          updateWhisper('💥 轟！烈焰晶石引爆，瞬間焚毀了' + targetName + ' ' + burned.length + ' 顆棋子！');
+        } else {
+          updateWhisper('💥 烈焰晶石引爆！但周圍兩格內無可焚毀的敵子。');
+        }
+      } else if (cryType === 2) {
+        // 🛡️ 護盾晶石
+        shieldBoard[r][c] = true;
+        playTone(520, 0.15);
+        var role = who === playerColor ? '你' : 'AI';
+        updateWhisper('🛡️ ' + role + '啟動了護盾晶石！該子獲得金剛不壞之身，免疫烈焰！');
+      }
+      return true;
+    }
+
     function initGrid() {
       var wrap = document.getElementById('boardGrid');
-      // 保留暫停遮罩元素
       var pauseEl = document.getElementById('pauseOverlay');
       wrap.innerHTML = '';
       if(pauseEl) wrap.appendChild(pauseEl);
 
       cellRefs = [];
-      var stars = [[3,3],[3,11],[7,7],[11,3],[11,11]];
       for (var r = 0; r < SIZE; r++) {
-        var rowEl = document.createElement('div');
-        rowEl.className = 'board-row';
         cellRefs[r] = [];
         for (var c = 0; c < SIZE; c++) {
           var cellEl = document.createElement('div');
           cellEl.className = 'board-cell';
-          var hl = document.createElement('div'); hl.className = 'h-line';
-          if (c === 0) hl.style.left = '50%';
-          if (c === SIZE - 1) hl.style.right = '50%';
-          var vl = document.createElement('div'); vl.className = 'v-line';
-          if (r === 0) vl.style.top = '50%';
-          if (r === SIZE - 1) vl.style.bottom = '50%';
-          cellEl.appendChild(hl); cellEl.appendChild(vl);
-
-          for (var s = 0; s < stars.length; s++) {
-            if (stars[s][0] === r && stars[s][1] === c) {
-              var st = document.createElement('div'); st.className = 'star';
-              cellEl.appendChild(st);
-            }
-          }
+          cellEl.setAttribute('data-row', r);
+          cellEl.setAttribute('data-col', c);
 
           (function(row, col) {
             cellEl.onclick = function() { onCellTap(row, col); };
           })(r, c);
 
-          rowEl.appendChild(cellEl);
+          wrap.appendChild(cellEl);
           cellRefs[r][c] = cellEl;
         }
-        wrap.appendChild(rowEl);
       }
     }
 
-    // 選單與模式導航
     function showMenu() {
       clearInterval(timedTimer);
       document.getElementById('viewPlay').classList.add('hidden');
@@ -419,7 +617,7 @@
     function setTimedLimit(sec) { timedLimitSec = sec; syncConfigUI(); }
 
     function syncConfigUI() {
-      ['NORMAL', 'HARD', 'MASTER'].forEach(d => {
+      ['BEGINNER', 'NORMAL', 'HARD', 'MASTER'].forEach(d => {
         var el = document.getElementById('cfgDiff' + d);
         if(el) el.className = 'btn ' + (aiDifficulty === d ? 'btn-brown' : 'btn-light');
       });
@@ -432,29 +630,11 @@
       });
     }
 
-    function confirmStartConfig() {
-      startGameSession(gameMode);
-    }
+    function confirmStartConfig() { startGameSession(gameMode); }
+    function startCrystalMode() { gameMode = 'CRYSTAL'; startGameSession('CRYSTAL'); }
+    function startCampaignMode(lv) { currentCampaignLevel = lv; gameMode = 'CAMPAIGN'; startGameSession('CAMPAIGN'); }
+    function startDailyMode() { gameMode = 'DAILY'; startGameSession('DAILY'); }
 
-    function startPuzzleMode(idx) {
-      if (idx !== undefined) currentPuzzleIndex = idx;
-      gameMode = 'PUZZLE';
-      startGameSession('PUZZLE');
-    }
-
-    function startCampaignMode(lv) {
-      currentCampaignLevel = lv;
-      gameMode = 'CAMPAIGN';
-      startGameSession('CAMPAIGN');
-    }
-
-    function startDailyMode() {
-      gameMode = 'DAILY';
-      currentPuzzleIndex = 0; // 簡易對應當日題目
-      startGameSession('DAILY');
-    }
-
-    // 啟動對局核心
     function startGameSession(mode) {
       gameMode = mode;
       document.getElementById('viewMenu').classList.add('hidden');
@@ -464,62 +644,54 @@
       document.getElementById('resultBox').classList.add('hidden');
 
       board = [];
+      crystalBoard = [];
+      shieldBoard = [];
       for(var r=0; r<SIZE; r++) {
         board[r] = [];
-        for(var c=0; c<SIZE; c++) board[r][c] = EMPTY;
+        crystalBoard[r] = [];
+        shieldBoard[r] = [];
+        for(var c=0; c<SIZE; c++) {
+          board[r][c] = EMPTY;
+          crystalBoard[r][c] = 0;
+          shieldBoard[r][c] = false;
+        }
       }
+
+      if (mode === 'CRYSTAL' || mode === 'DAILY') {
+        var crystalsPlaced = 0;
+        while(crystalsPlaced < 4) {
+          var rr = Math.floor(Math.random() * 11) + 2;
+          var cc = Math.floor(Math.random() * 11) + 2;
+          if (crystalBoard[rr][cc] === 0 && !(rr === 7 && cc === 7)) {
+            crystalBoard[rr][cc] = Math.random() > 0.5 ? 1 : 2;
+            crystalsPlaced++;
+          }
+        }
+      }
+
       historyStack = [];
       isOver = false;
       aiBusy = false;
       lastPos = null;
       winCoords = null;
-      showHintFlag = false;
       isPaused = false;
       clearInterval(timedTimer);
 
       var subHeaderCtrl = document.getElementById('subHeaderControl');
       var subTitle = document.getElementById('subHeaderTitle');
-      var btnUndo = document.getElementById('btnUndo');
-      var btnHint = document.getElementById('btnHint');
       subHeaderCtrl.innerHTML = '';
-      btnUndo.classList.remove('hidden');
-      btnHint.classList.add('hidden');
 
-      if (mode === 'PUZZLE' || mode === 'DAILY') {
-        btnHint.classList.remove('hidden');
-        var pz = PUZZLE_DB[currentPuzzleIndex];
-        subTitle.textContent = `🧩 [${pz.group}] ${pz.title}`;
-        if(pz.stones) {
-          pz.stones.forEach(s => { board[s.r][s.c] = s.p; });
-        }
-        playerColor = BLACK;
-        currentTurn = BLACK;
-        // 下拉選單切換題目
-        var sel = document.createElement('select');
-        sel.style.cssText = 'padding:4px 8px; border-radius:6px; border:1px solid #C89666; font-size:12px;';
-        for(var i=0; i<PUZZLE_DB.length; i++) {
-          var opt = document.createElement('option');
-          opt.value = i;
-          opt.textContent = `第 ${i+1} 題`;
-          if(i === currentPuzzleIndex) opt.selected = true;
-          sel.appendChild(opt);
-        }
-        sel.onchange = function(e) { startPuzzleMode(Number(e.target.value)); };
-        subHeaderCtrl.appendChild(sel);
+      if (mode === 'CRYSTAL') {
+        subTitle.textContent = '⚡ 靈能晶石棋陣';
+        var teachBtn = document.createElement('button');
+        teachBtn.className = 'btn btn-light';
+        teachBtn.style.cssText = 'padding:3px 8px; font-size:11px;';
+        teachBtn.textContent = '📖 規則';
+        teachBtn.onclick = openTutorialModal;
+        subHeaderCtrl.appendChild(teachBtn);
       } else if (mode === 'CAMPAIGN') {
         subTitle.textContent = `🗺️ 闖關挑戰｜第 ${currentCampaignLevel} 關`;
         playerColor = currentCampaignLevel % 2 === 1 ? BLACK : WHITE;
-        var sel2 = document.createElement('select');
-        sel2.style.cssText = 'padding:4px 8px; border-radius:6px; border:1px solid #C89666; font-size:12px;';
-        for(var l=1; l<=20; l++) {
-          var opt2 = document.createElement('option');
-          opt2.value = l;
-          opt2.textContent = `第 ${l} 關`;
-          if(l === currentCampaignLevel) opt2.selected = true;
-          sel2.appendChild(opt2);
-        }
-        sel2.onchange = function(e) { startCampaignMode(Number(e.target.value)); };
-        subHeaderCtrl.appendChild(sel2);
       } else if (mode === 'TIMED') {
         subTitle.textContent = `⏱️ 限時挑戰 (${timedLimitSec}秒/步)`;
         timedRemaining = timedLimitSec;
@@ -528,17 +700,12 @@
         timeBadge.style.cssText = 'font-size:13px; font-weight:bold; color:#B71C1C;';
         timeBadge.textContent = `倒數: ${timedRemaining}s`;
         subHeaderCtrl.appendChild(timeBadge);
-
-        var pauseBtn = document.createElement('button');
-        pauseBtn.className = 'btn btn-gold';
-        pauseBtn.style.cssText = 'margin-left:6px; padding:4px 8px; font-size:11px;';
-        pauseBtn.textContent = '暫停';
-        pauseBtn.onclick = togglePause;
-        subHeaderCtrl.appendChild(pauseBtn);
-
         startTimedInterval();
+      } else if (mode === 'DAILY') {
+        subTitle.textContent = '📅 每日晶石對決（台北時區）';
       } else {
-        subTitle.textContent = `🤖 AI 對戰 (${aiDifficulty}・${playerColor===BLACK?'黑先':'白後'})`;
+        var diffNames = { BEGINNER: '簡單', NORMAL: '普通', HARD: '困難', MASTER: '大師' };
+        subTitle.textContent = `🤖 AI 對戰 (${diffNames[aiDifficulty]})`;
       }
 
       if (playerColor === WHITE && (mode === 'AI' || mode === 'CAMPAIGN' || mode === 'TIMED')) {
@@ -576,52 +743,79 @@
       else overlay.classList.add('hidden');
     }
 
-    function toggleHint() {
-      showHintFlag = !showHintFlag;
-      var btn = document.getElementById('btnHint');
-      btn.textContent = showHintFlag ? '隱藏提示' : '💡 提示';
-      renderBoard();
-    }
-
     function renderBoard() {
+      var prevDots = document.querySelectorAll('.last-dot');
+      for (var d = 0; d < prevDots.length; d++) {
+        prevDots[d].remove();
+      }
+
       for (var r = 0; r < SIZE; r++) {
         for (var c = 0; c < SIZE; c++) {
           var cellEl = cellRefs[r][c];
-          // 清除舊子與標記
-          var oldStone = cellEl.querySelector('.stone');
-          if (oldStone) cellEl.removeChild(oldStone);
-          var oldHint = cellEl.querySelector('.hint-mark');
-          if (oldHint) cellEl.removeChild(oldHint);
-
           var val = board[r][c];
-          if (val !== EMPTY) {
-            var st = document.createElement('div');
-            st.className = 'stone ' + (val === BLACK ? 'stone-black' : 'stone-white');
+          var existingStone = cellEl.querySelector('.stone');
+
+          if (val === EMPTY) {
+            if (existingStone) existingStone.remove();
+
+            var existingStar = cellEl.querySelector('.star');
+            var stars = [[3,3],[3,11],[7,7],[11,3],[11,11]];
+            var isStar = false;
+            for (var s = 0; s < stars.length; s++) {
+              if (stars[s][0] === r && stars[s][1] === c) { isStar = true; break; }
+            }
+            if (isStar && !existingStar) {
+              var st = document.createElement('div');
+              st.className = 'star';
+              cellEl.appendChild(st);
+            }
+
+            var existingCry = cellEl.querySelector('.crystal');
+            if (crystalBoard[r][c] > 0 && !existingCry) {
+              var cry = document.createElement('div');
+              cry.className = 'crystal';
+              cry.textContent = crystalBoard[r][c] === 1 ? '🔥' : '🛡️';
+              cellEl.appendChild(cry);
+            } else if (crystalBoard[r][c] === 0 && existingCry) {
+              existingCry.remove();
+            }
+          } else {
+            var starEl = cellEl.querySelector('.star');
+            if (starEl) starEl.remove();
+            var cryEl = cellEl.querySelector('.crystal');
+            if (cryEl) cryEl.remove();
+
+            if (!existingStone) {
+              var stNode = document.createElement('div');
+              stNode.className = 'stone ' + (val === BLACK ? 'stone-black' : 'stone-white');
+              cellEl.appendChild(stNode);
+              existingStone = stNode;
+            } else {
+              existingStone.className = 'stone ' + (val === BLACK ? 'stone-black' : 'stone-white');
+            }
+
+            if (shieldBoard[r][c]) {
+              existingStone.className += ' stone-shielded';
+            }
+
             if (winCoords) {
               for (var w = 0; w < winCoords.length; w++) {
-                if (winCoords[w].r === r && winCoords[w].c === c) st.className += ' stone-win';
-              }
-            }
-            if (lastPos && lastPos.r === r && lastPos.c === c) {
-              var dot = document.createElement('div'); dot.className = 'last-dot';
-              st.appendChild(dot);
-            }
-            cellEl.appendChild(st);
-          } else if (showHintFlag && (gameMode === 'PUZZLE' || gameMode === 'DAILY')) {
-            var pz = PUZZLE_DB[currentPuzzleIndex];
-            if (pz && pz.targets) {
-              for (var t = 0; t < pz.targets.length; t++) {
-                if (pz.targets[t].r === r && pz.targets[t].c === c) {
-                  var hm = document.createElement('div'); hm.className = 'hint-mark';
-                  cellEl.appendChild(hm);
+                if (winCoords[w].r === r && winCoords[w].c === c) {
+                  existingStone.className += ' stone-win';
                 }
               }
+            }
+
+            if (lastPos && lastPos.r === r && lastPos.c === c) {
+              var dot = document.createElement('div');
+              dot.className = 'last-dot';
+              existingStone.appendChild(dot);
             }
           }
         }
       }
-      document.getElementById('statusExtra').textContent = `手數：${historyStack.length}`;
-      var statusMsg = isOver ? '對局結束' : aiBusy ? '⚡ AI 思考中...' : `${playerColor===BLACK?'● 執黑':'○ 執白'}｜輪到你落子`;
+      document.getElementById('statusExtra').textContent = '手數：' + historyStack.length;
+      var statusMsg = isOver ? '對局結束' : aiBusy ? '⚡ AI 思考中...' : (playerColor === BLACK ? '● 執黑' : '○ 執白') + '｜輪到你落子';
       document.getElementById('statusText').textContent = statusMsg;
     }
 
@@ -645,29 +839,16 @@
 
     function onCellTap(r, c) {
       if (isOver || isPaused || aiBusy || currentTurn !== playerColor || board[r][c] !== EMPTY) return;
-      placeStone(r, c, playerColor);
-      updateWhisper(); // 落子時即時更新悄悄話
-
-      if (gameMode === 'PUZZLE' || gameMode === 'DAILY') {
-        var pz = PUZZLE_DB[currentPuzzleIndex];
-        var correct = pz.targets.some(t => t.r === r && t.c === c);
-        if (correct) {
-          winCoords = checkWinLine(board, r, c, playerColor) || [{r:r, c:c}];
-          isOver = true;
-          showResult('🎉 完美破陣！殘局解謎成功', '恭喜你精準命中關鍵要害！', true);
-        } else {
-          isOver = true;
-          showResult('❌ 挑戰失敗', '此步未能命中要害，請點擊重新挑戰。', false);
-        }
-        renderBoard();
-        return;
-      }
+      
+      var isCrystal = triggerCrystalEffect(r, c, playerColor);
+      placeStone(r, c, playerColor, isCrystal);
 
       var wLine = checkWinLine(board, r, c, playerColor);
       if (wLine) {
         winCoords = wLine;
         isOver = true;
-        showResult('🎉 勝利！完美勝出 ⭐⭐⭐', '恭喜你在對局中擊敗對手！', gameMode === 'CAMPAIGN');
+        updateWhisper('🎉 精彩絕倫的勝局！JOAN 為你起立鼓掌喝采！⭐⭐⭐');
+        showResult('🎉 勝利！完美擊敗對手 ⭐⭐⭐', '恭喜你贏得本局勝利！', gameMode === 'CAMPAIGN');
         renderBoard();
         return;
       }
@@ -679,13 +860,19 @@
       }
     }
 
-    function placeStone(r, c, p) {
+    function placeStone(r, c, p, hasCrystalAlert) {
       board[r][c] = p;
       historyStack.push({r:r, c:c, p:p});
       lastPos = {r:r, c:c};
       playTone(p === BLACK ? 420 : 340, 0.06);
       currentTurn = p === BLACK ? WHITE : BLACK;
       if(gameMode === 'TIMED') timedRemaining = timedLimitSec;
+
+      // 若非晶石爆炸警報，落子時自動切換一句全新 JOAN 悄悄話
+      if (!hasCrystalAlert) {
+        updateWhisper();
+      }
+
       renderBoard();
     }
 
@@ -709,35 +896,117 @@
         else if (cnt === 4 && open === 1) { total += 12000; rush4++; }
         else if (cnt === 3 && open === 2) { total += 8000; live3++; }
       }
-      if (rush4 >= 2 || (rush4 >= 1 && live3 >= 1)) total += 80000;
       return total + (14 - (Math.abs(r-7) + Math.abs(c-7))) * 10;
+    }
+
+    // AI 晶石評估大腦
+    function evaluateCrystalTactics(r, c, aiPiece, playerPiece) {
+      var cryType = crystalBoard[r][c];
+      if (cryType === 0) return 0;
+
+      if (cryType === 1) {
+        var enemyBurnedCount = 0;
+        var enemyThreatNeutralized = 0;
+
+        for (var dr = -2; dr <= 2; dr++) {
+          for (var dc = -2; dc <= 2; dc++) {
+            var nr = r + dr, nc = c + dc;
+            if (nr >= 0 && nr < SIZE && nc >= 0 && nc < SIZE) {
+              if (board[nr][nc] === playerPiece && !shieldBoard[nr][nc]) {
+                enemyBurnedCount++;
+                var threat = scoreCell(nr, nc, playerPiece);
+                if (threat >= 8000) {
+                  enemyThreatNeutralized += 16000;
+                }
+              }
+            }
+          }
+        }
+
+        if (enemyBurnedCount === 0) {
+          var aiAtRisk = 0;
+          for (var dr = -2; dr <= 2; dr++) {
+            for (var dc = -2; dc <= 2; dc++) {
+              var nr = r + dr, nc = c + dc;
+              if (nr >= 0 && nr < SIZE && nc >= 0 && nc < SIZE && board[nr][nc] === aiPiece && !shieldBoard[nr][nc]) {
+                aiAtRisk++;
+              }
+            }
+          }
+          if (aiAtRisk >= 2) return aiAtRisk * 4000;
+          return -3000;
+        }
+
+        return enemyBurnedCount * 4500 + enemyThreatNeutralized;
+      }
+
+      if (cryType === 2) {
+        var baseScore = scoreCell(r, c, aiPiece);
+        if (baseScore >= 2000) {
+          var nearFlame = false;
+          for (var dr = -2; dr <= 2; dr++) {
+            for (var dc = -2; dc <= 2; dc++) {
+              var nr = r + dr, nc = c + dc;
+              if (nr >= 0 && nr < SIZE && nc >= 0 && nc < SIZE && crystalBoard[nr][nc] === 1) {
+                nearFlame = true; break;
+              }
+            }
+            if (nearFlame) break;
+          }
+          return nearFlame ? 6000 : 1500;
+        }
+        return 200;
+      }
+
+      return 0;
     }
 
     function aiTurn() {
       if (isOver) return;
       var aiPiece = playerColor === BLACK ? WHITE : BLACK;
-      var best = null, bestScore = -1;
-      var defW = aiDifficulty === 'NORMAL' ? 1.0 : aiDifficulty === 'HARD' ? 1.15 : 1.3;
-      for (var r = 0; r < SIZE; r++) {
-        for (var c = 0; c < SIZE; c++) {
-          if (board[r][c] === EMPTY) {
-            var atk = scoreCell(r, c, aiPiece);
-            var def = scoreCell(r, c, playerColor);
-            var sc = atk + def * defW;
-            if (atk >= 1000000) sc = 9999999;
-            else if (def >= 1000000) sc = 8888888;
-            if (sc > bestScore) { bestScore = sc; best = {r:r, c:c}; }
+      var best = null, bestScore = -Infinity;
+
+      if (aiDifficulty === 'BEGINNER') {
+        for (var r = 0; r < SIZE; r++) {
+          for (var c = 0; c < SIZE; c++) {
+            if (board[r][c] === EMPTY) {
+              var atk = scoreCell(r, c, aiPiece);
+              var def = scoreCell(r, c, playerColor);
+              var crystalVal = evaluateCrystalTactics(r, c, aiPiece, playerColor) * 0.7;
+              var sc = atk + def * 1.1 + crystalVal + (Math.random() * 260 - 130);
+              if (def >= 100000) sc += 500000;
+              if (sc > bestScore) { bestScore = sc; best = {r:r, c:c}; }
+            }
           }
         }
       }
+
+      if (!best || aiDifficulty !== 'BEGINNER') {
+        var defW = (aiDifficulty === 'NORMAL') ? 1.05 : (aiDifficulty === 'HARD') ? 1.15 : 1.35;
+        for (var r = 0; r < SIZE; r++) {
+          for (var c = 0; c < SIZE; c++) {
+            if (board[r][c] === EMPTY) {
+              var atk = scoreCell(r, c, aiPiece);
+              var def = scoreCell(r, c, playerColor);
+              var crystalVal = evaluateCrystalTactics(r, c, aiPiece, playerColor);
+              var noise = (aiDifficulty === 'NORMAL') ? (Math.random() * 150 - 75) : 0;
+              var sc = atk + def * defW + crystalVal + noise;
+              if (atk >= 1000000) sc = 9999999;
+              if (sc > bestScore) { bestScore = sc; best = {r:r, c:c}; }
+            }
+          }
+        }
+      }
+
       aiBusy = false;
       if (best) {
-        placeStone(best.r, best.c, aiPiece);
-        updateWhisper(); // AI 下完後也更新悄悄話
+        var isCrystal = triggerCrystalEffect(best.r, best.c, aiPiece);
+        placeStone(best.r, best.c, aiPiece, isCrystal);
         var wLine = checkWinLine(board, best.r, best.c, aiPiece);
         if (wLine) {
           winCoords = wLine;
           isOver = true;
+          updateWhisper('🍵 雖敗猶榮！喝口熱茶暖暖心，下一局一定更加精彩。');
           showResult('🍵 AI 獲勝，再接再厲！', 'AI 率先完成五子連線。', false);
           renderBoard();
         }
@@ -750,8 +1019,11 @@
       var m2 = historyStack.pop();
       board[m1.r][m1.c] = EMPTY;
       board[m2.r][m2.c] = EMPTY;
+      shieldBoard[m1.r][m1.c] = false;
+      shieldBoard[m2.r][m2.c] = false;
       lastPos = historyStack.length > 0 ? historyStack[historyStack.length - 1] : null;
       currentTurn = playerColor;
+      updateWhisper('↩️ 時光倒流術！JOAN 幫你把棋子悄悄收回口袋囉～');
       renderBoard();
     }
 
@@ -766,18 +1038,10 @@
       box.classList.remove('hidden');
     }
 
-    function restartCurrentGame() {
-      startGameSession(gameMode);
-    }
-
-    function nextLevelOrPuzzle() {
-      if (gameMode === 'PUZZLE') {
-        currentPuzzleIndex = (currentPuzzleIndex + 1) % PUZZLE_DB.length;
-        startPuzzleMode(currentPuzzleIndex);
-      } else if (gameMode === 'CAMPAIGN') {
-        currentCampaignLevel = Math.min(20, currentCampaignLevel + 1);
-        startCampaignMode(currentCampaignLevel);
-      }
+    function restartCurrentGame() { startGameSession(gameMode); }
+    function nextCampaignLevel() {
+      currentCampaignLevel = Math.min(20, currentCampaignLevel + 1);
+      startCampaignMode(currentCampaignLevel);
     }
 
     initGrid();
