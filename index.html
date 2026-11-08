@@ -179,6 +179,19 @@
     }
     .hidden { display: none !important; }
 
+    /* 虛空崩塌儲存格樣式 */
+    .void-cell {
+      background-color: #241410 !important;
+      opacity: 0.28 !important;
+      cursor: not-allowed !important;
+      pointer-events: none !important;
+      filter: grayscale(1);
+    }
+    .void-cell::before, .void-cell::after {
+      background-color: #3E2723 !important;
+      opacity: 0.15;
+    }
+
     /* 悄悄話卡片換句淡入效果 */
     .fade-text {
       animation: fadeInText 0.28s ease-out;
@@ -267,9 +280,10 @@
         <div style="font-size:12px; color:#6D4C41;">支援每步 10 秒 / 20 秒 / 30 秒倒數計時極限對決。</div>
       </div>
 
-      <div class="card" onclick="startDailyMode()">
-        <div style="font-size:16px; font-weight:bold; margin-bottom:4px;">📅 MODE 05｜每日晶石對決</div>
-        <div style="font-size:12px; color:#6D4C41;">台北時區每日固定晶石分佈，挑戰連續勝場紀錄！</div>
+      <!-- MODE 05：虛空縮圈生存戰（大逃殺五子棋） -->
+      <div class="card" onclick="startVoidMode()">
+        <div style="font-size:16px; font-weight:bold; margin-bottom:4px;">🌪️ MODE 05｜虛空縮圈生存戰</div>
+        <div style="font-size:12px; color:#6D4C41;">五子棋大逃殺！每 8 手外圍崩塌吸入黑洞，逼入中宮生死決！</div>
       </div>
     </div>
 
@@ -396,6 +410,61 @@
     var timedLimitSec = 20;
     var timedRemaining = 20;
     var timedTimer = null;
+
+    var voidRings = 0;
+    var VOID_STEP_INTERVAL = 8;
+    var MAX_VOID_RINGS = 3;
+
+    function isCellVoid(r, c) {
+      if (gameMode !== 'VOID') return false;
+      return r < voidRings || r >= SIZE - voidRings || c < voidRings || c >= SIZE - voidRings;
+    }
+
+    function checkAndTriggerVoidCollapse() {
+      if (gameMode !== 'VOID') return;
+      var moves = historyStack.length;
+      var nextCollapseAt = (voidRings + 1) * VOID_STEP_INTERVAL;
+      var remaining = nextCollapseAt - moves;
+
+      var badge = document.getElementById('voidBadge');
+      if (badge) {
+        if (voidRings >= MAX_VOID_RINGS) {
+          badge.textContent = '已縮至極限 (9x9)';
+        } else {
+          badge.textContent = '縮圈倒數: ' + remaining + ' 手';
+        }
+      }
+
+      if (remaining === 1 && voidRings < MAX_VOID_RINGS) {
+        updateWhisper('⚠️ 空間劇烈震顫！再落 1 子最外圍將崩塌吸入虛空！');
+      } else if (remaining === 0 && voidRings < MAX_VOID_RINGS) {
+        collapseNextRing();
+      }
+    }
+
+    function collapseNextRing() {
+      var ring = voidRings;
+      voidRings++;
+      var erasedStones = 0;
+      var minIdx = ring, maxIdx = SIZE - 1 - ring;
+
+      for (var r = minIdx; r <= maxIdx; r++) {
+        for (var c = minIdx; c <= maxIdx; c++) {
+          if (r === minIdx || r === maxIdx || c === minIdx || c === maxIdx) {
+            if (board[r][c] !== EMPTY) {
+              board[r][c] = EMPTY;
+              erasedStones++;
+            }
+            crystalBoard[r][c] = 0;
+            shieldBoard[r][c] = false;
+          }
+        }
+      }
+
+      playExplosionTone();
+      updateWhisper('🌌 空間大崩塌！最外圈化為虛空，' + (erasedStones > 0 ? erasedStones + ' 顆邊緣棋子已被黑洞消滅！' : '外圍已全面封鎖！'));
+      renderBoard();
+    }
 
     // 🌟 超過 30 句豐富且多樣的 JOAN 悄悄話語錄庫
     var whispers = [
@@ -633,7 +702,7 @@
     function confirmStartConfig() { startGameSession(gameMode); }
     function startCrystalMode() { gameMode = 'CRYSTAL'; startGameSession('CRYSTAL'); }
     function startCampaignMode(lv) { currentCampaignLevel = lv; gameMode = 'CAMPAIGN'; startGameSession('CAMPAIGN'); }
-    function startDailyMode() { gameMode = 'DAILY'; startGameSession('DAILY'); }
+    function startVoidMode() { gameMode = 'VOID'; startGameSession('VOID'); }
 
     function startGameSession(mode) {
       gameMode = mode;
@@ -657,7 +726,7 @@
         }
       }
 
-      if (mode === 'CRYSTAL' || mode === 'DAILY') {
+      if (mode === 'CRYSTAL') {
         var crystalsPlaced = 0;
         while(crystalsPlaced < 4) {
           var rr = Math.floor(Math.random() * 11) + 2;
@@ -675,6 +744,7 @@
       lastPos = null;
       winCoords = null;
       isPaused = false;
+      voidRings = 0;
       clearInterval(timedTimer);
 
       var subHeaderCtrl = document.getElementById('subHeaderControl');
@@ -701,14 +771,19 @@
         timeBadge.textContent = `倒數: ${timedRemaining}s`;
         subHeaderCtrl.appendChild(timeBadge);
         startTimedInterval();
-      } else if (mode === 'DAILY') {
-        subTitle.textContent = '📅 每日晶石對決（台北時區）';
+      } else if (mode === 'VOID') {
+        subTitle.textContent = '🌪️ 虛空縮圈生存戰';
+        var voidBadge = document.createElement('span');
+        voidBadge.id = 'voidBadge';
+        voidBadge.style.cssText = 'font-size:12px; font-weight:bold; color:#7B1FA2;';
+        voidBadge.textContent = '縮圈倒數: 8 手';
+        subHeaderCtrl.appendChild(voidBadge);
       } else {
         var diffNames = { BEGINNER: '簡單', NORMAL: '普通', HARD: '困難', MASTER: '大師' };
         subTitle.textContent = `🤖 AI 對戰 (${diffNames[aiDifficulty]})`;
       }
 
-      if (playerColor === WHITE && (mode === 'AI' || mode === 'CAMPAIGN' || mode === 'TIMED')) {
+      if (playerColor === WHITE && (mode === 'AI' || mode === 'CAMPAIGN' || mode === 'TIMED' || mode === 'VOID')) {
         board[7][7] = BLACK;
         historyStack.push({r:7, c:7, p:BLACK});
         lastPos = {r:7, c:7};
@@ -753,6 +828,14 @@
         for (var c = 0; c < SIZE; c++) {
           var cellEl = cellRefs[r][c];
           var val = board[r][c];
+          var isVoid = isCellVoid(r, c);
+
+          if (isVoid) {
+            cellEl.classList.add('void-cell');
+          } else {
+            cellEl.classList.remove('void-cell');
+          }
+
           var existingStone = cellEl.querySelector('.stone');
 
           if (val === EMPTY) {
@@ -838,7 +921,7 @@
     }
 
     function onCellTap(r, c) {
-      if (isOver || isPaused || aiBusy || currentTurn !== playerColor || board[r][c] !== EMPTY) return;
+      if (isOver || isPaused || aiBusy || currentTurn !== playerColor || board[r][c] !== EMPTY || isCellVoid(r, c)) return;
       
       var isCrystal = triggerCrystalEffect(r, c, playerColor);
       placeStone(r, c, playerColor, isCrystal);
@@ -873,6 +956,7 @@
         updateWhisper();
       }
 
+      checkAndTriggerVoidCollapse();
       renderBoard();
     }
 
@@ -969,7 +1053,7 @@
       if (aiDifficulty === 'BEGINNER') {
         for (var r = 0; r < SIZE; r++) {
           for (var c = 0; c < SIZE; c++) {
-            if (board[r][c] === EMPTY) {
+            if (board[r][c] === EMPTY && !isCellVoid(r, c)) {
               var atk = scoreCell(r, c, aiPiece);
               var def = scoreCell(r, c, playerColor);
               var crystalVal = evaluateCrystalTactics(r, c, aiPiece, playerColor) * 0.7;
@@ -985,7 +1069,7 @@
         var defW = (aiDifficulty === 'NORMAL') ? 1.05 : (aiDifficulty === 'HARD') ? 1.15 : 1.35;
         for (var r = 0; r < SIZE; r++) {
           for (var c = 0; c < SIZE; c++) {
-            if (board[r][c] === EMPTY) {
+            if (board[r][c] === EMPTY && !isCellVoid(r, c)) {
               var atk = scoreCell(r, c, aiPiece);
               var def = scoreCell(r, c, playerColor);
               var crystalVal = evaluateCrystalTactics(r, c, aiPiece, playerColor);
@@ -1021,6 +1105,14 @@
       board[m2.r][m2.c] = EMPTY;
       shieldBoard[m1.r][m1.c] = false;
       shieldBoard[m2.r][m2.c] = false;
+      if (gameMode === 'VOID') {
+        voidRings = Math.min(MAX_VOID_RINGS, Math.floor(historyStack.length / VOID_STEP_INTERVAL));
+        var badge = document.getElementById('voidBadge');
+        if (badge) {
+          var remaining = (voidRings + 1) * VOID_STEP_INTERVAL - historyStack.length;
+          badge.textContent = '縮圈倒數: ' + remaining + ' 手';
+        }
+      }
       lastPos = historyStack.length > 0 ? historyStack[historyStack.length - 1] : null;
       currentTurn = playerColor;
       updateWhisper('↩️ 時光倒流術！JOAN 幫你把棋子悄悄收回口袋囉～');
