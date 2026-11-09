@@ -318,7 +318,8 @@
       </div>
       <div class="card hidden" id="lobbyWaiting" style="cursor:default; text-align:center; padding: 30px 20px;">
         <div style="font-size:15px; font-weight:bold; color:#5D4037; margin-bottom:12px;">邀請好友輸入以下房號</div>
-        <div id="lobbyRoomCode" style="font-size:40px; font-weight:900; color:#1F6F5B; letter-spacing:8px; margin-bottom:20px; background:#F1F8E9; padding:12px; border-radius:12px; border:2px dashed #4CAF50;">123456</div>
+        <div id="lobbyRoomCode" style="font-size:40px; font-weight:900; color:#1F6F5B; letter-spacing:8px; margin-bottom:12px; background:#F1F8E9; padding:12px; border-radius:12px; border:2px dashed #4CAF50;">123456</div>
+        <button class="btn btn-green" style="width:100%; padding:12px; font-size:14px; margin-bottom:20px;" onclick="copyInviteLink()">🔗 複製專屬邀請連結</button>
         <div style="font-size:13px; color:#0277BD; margin-bottom:24px;" class="animate-pulse">⏳ 正在等待對手連線...</div>
         <button class="btn btn-gray" style="padding:10px 24px;" onclick="showMenu()">取消並離開</button>
       </div>
@@ -778,8 +779,19 @@
        document.getElementById('lobbyMenu').classList.add('hidden');
        document.getElementById('lobbyWaiting').classList.remove('hidden');
        document.getElementById('lobbyRoomCode').textContent = code;
-       updateWhisper('房號 [' + code + '] 已建立！請將房號告訴您的好友...');
+       updateWhisper('房號 [' + code + '] 已建立！請點擊複製連結傳給好友！');
        listenOnlineRoom();
+    }
+
+    function copyInviteLink() {
+       var url = window.location.origin + window.location.pathname + '?room=' + onlineRoomId;
+       var tempInput = document.createElement('input');
+       tempInput.value = url;
+       document.body.appendChild(tempInput);
+       tempInput.select();
+       document.execCommand('copy');
+       document.body.removeChild(tempInput);
+       updateWhisper('📋 邀請連結已複製！快貼給朋友吧！');
     }
 
     async function joinOnlineRoom() {
@@ -1470,6 +1482,18 @@
       initGrid();
       showMenu();
     });
+
+    window.tryAutoJoin = async function() {
+       var params = new URLSearchParams(window.location.search);
+       var roomCode = params.get('room');
+       if (roomCode && roomCode.length === 6) {
+           document.getElementById('joinRoomInput').value = roomCode;
+           await openOnlineLobby();
+           joinOnlineRoom();
+           // 清除網址列的房號，避免重新整理再次觸發
+           try { window.history.replaceState({}, document.title, window.location.pathname); } catch(e) {}
+       }
+    };
   </script>
 
   <!-- Firebase 雲端同步模組 -->
@@ -1506,6 +1530,13 @@
         return false;
       }
     })();
+
+    // 確保 Firebase 初始化完成後，檢查是否有網址邀請碼需要自動加入
+    window.fbInitPromise.then(function(success) {
+       if (success && window.tryAutoJoin) {
+           window.tryAutoJoin();
+       }
+    });
   </script>
 </body>
 </html>
