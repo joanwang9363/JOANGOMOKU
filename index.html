@@ -1454,8 +1454,17 @@
 
             if (atk >= 1000000) return { r: r, c: c };
 
-            var defMultiplier = difficulty === 'BEGINNER' ? 0.8 : difficulty === 'NORMAL' ? 1.05 : difficulty === 'HARD' ? 1.18 : 1.28;
-            var noise = difficulty === 'BEGINNER' ? (Math.random() * 400 - 200) : difficulty === 'NORMAL' ? (Math.random() * 150 - 75) : 0;
+            // 讓不同難度有極度鮮明的防守意識差異
+            var defMultiplier = 1.0;
+            if (difficulty === 'BEGINNER') defMultiplier = 0.5;      // 簡單：極度輕視防守
+            else if (difficulty === 'NORMAL') defMultiplier = 1.0;   // 普通：正常防守
+            else if (difficulty === 'HARD') defMultiplier = 1.2;     // 困難：積極防守
+            else if (difficulty === 'MASTER') defMultiplier = 1.5;   // 大師：滴水不漏，防守至上
+
+            // 加入顯著的「雜訊干擾」，讓低難度更像人類新手會犯的錯
+            var noise = 0;
+            if (difficulty === 'BEGINNER') noise = Math.random() * 8000; // 可能會忽視對手的活三 (9000分)
+            else if (difficulty === 'NORMAL') noise = Math.random() * 1500; // 會下出次佳的位置
 
             candidates.push({
               r: r, c: c,
@@ -1469,14 +1478,26 @@
       if (!hasStone || candidates.length === 0) return { r: 7, c: 7 };
 
       candidates.sort(function(a, b) { return b.def - a.def; });
+      // 確保無論哪個難度，只要對手要連五了，必定強制去擋
       if (candidates[0].def >= 1000000) return { r: candidates[0].r, c: candidates[0].c };
 
       candidates.sort(function(a, b) { return b.score - a.score; });
-      if (difficulty === 'BEGINNER' || difficulty === 'NORMAL') {
+      
+      // 🟢 簡單模式：從最好的 3 步棋中隨機挑一步，時常犯錯，不會每步都下在最完美的位置
+      if (difficulty === 'BEGINNER') {
+        var poolSize = Math.min(3, candidates.length);
+        var pick = Math.floor(Math.random() * poolSize);
+        return { r: candidates[pick].r, c: candidates[pick].c };
+      }
+
+      // 🔵 普通模式：單步貪婪法，看到哪邊分數高就下哪邊，完全不考慮對手下一步的連鎖反應
+      if (difficulty === 'NORMAL') {
         return { r: candidates[0].r, c: candidates[0].c };
       }
 
-      var topN = candidates.slice(0, difficulty === 'MASTER' ? 8 : 5);
+      // 🔴 困難 與 👑 大師模式：開啟「預測未來」的多步深度搜索
+      var searchBreadth = difficulty === 'MASTER' ? 10 : 4; // 大師會同時衡量 10 條路線
+      var topN = candidates.slice(0, searchBreadth);
       var bestMove = topN[0];
       var bestVal = -Infinity;
 
@@ -1494,7 +1515,10 @@
         }
         b[cand.r][cand.c] = EMPTY;
 
-        var netVal = cand.score - worstReply * (difficulty === 'MASTER' ? 0.85 : 0.6);
+        // 大師模式(0.95) 會極度厭惡「讓對手有機會反擊」的路線；困難模式(0.6) 則相對寬容
+        var penaltyWeight = difficulty === 'MASTER' ? 0.95 : 0.6;
+        var netVal = cand.score - worstReply * penaltyWeight;
+
         if (netVal > bestVal) {
           bestVal = netVal;
           bestMove = cand;
