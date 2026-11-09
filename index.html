@@ -1456,15 +1456,16 @@
 
             // 讓不同難度有極度鮮明的防守意識差異
             var defMultiplier = 1.0;
-            if (difficulty === 'BEGINNER') defMultiplier = 0.5;      // 簡單：極度輕視防守
+            if (difficulty === 'BEGINNER') defMultiplier = 0.8;      // 簡單：防守意識稍弱，但不至於完全不防
             else if (difficulty === 'NORMAL') defMultiplier = 1.0;   // 普通：正常防守
             else if (difficulty === 'HARD') defMultiplier = 1.2;     // 困難：積極防守
             else if (difficulty === 'MASTER') defMultiplier = 1.5;   // 大師：滴水不漏，防守至上
 
-            // 加入顯著的「雜訊干擾」，讓低難度更像人類新手會犯的錯
+            // 加入「雜訊干擾」，讓低難度更像人類新手會犯的錯
             var noise = 0;
-            if (difficulty === 'BEGINNER') noise = Math.random() * 8000; // 可能會忽視對手的活三 (9000分)
-            else if (difficulty === 'NORMAL') noise = Math.random() * 1500; // 會下出次佳的位置
+            // 簡單模式雜訊 2500：會讓它在開局時下得比較隨性，但不會笨到漏看「活三(9000分)」這種明顯的致命威脅
+            if (difficulty === 'BEGINNER') noise = Math.random() * 2500; 
+            else if (difficulty === 'NORMAL') noise = Math.random() * 800;
 
             candidates.push({
               r: r, c: c,
@@ -1483,15 +1484,10 @@
 
       candidates.sort(function(a, b) { return b.score - a.score; });
       
-      // 🟢 簡單模式：從最好的 3 步棋中隨機挑一步，時常犯錯，不會每步都下在最完美的位置
-      if (difficulty === 'BEGINNER') {
-        var poolSize = Math.min(3, candidates.length);
-        var pick = Math.floor(Math.random() * poolSize);
-        return { r: candidates[pick].r, c: candidates[pick].c };
-      }
-
-      // 🔵 普通模式：單步貪婪法，看到哪邊分數高就下哪邊，完全不考慮對手下一步的連鎖反應
-      if (difficulty === 'NORMAL') {
+      // 🟢 簡單 與 🔵 普通模式：單步貪婪法。
+      // 由於前面已經加入了不同程度的 noise（雜訊），它們在佈局期會展現出人類新手的隨機性（不一定下最完美的位置），
+      // 但只要盤面出現「活三 (9000分)」等巨大威脅，分數碾壓了雜訊值，它們就會乖乖防守，不再是亂下的笨蛋。
+      if (difficulty === 'BEGINNER' || difficulty === 'NORMAL') {
         return { r: candidates[0].r, c: candidates[0].c };
       }
 
