@@ -4,8 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>JOAN GOMOKU ｜ 棋藝異想世界 (v2026.11.08.7)</title>
-  <!-- 引入 WebRTC 即時連線庫，支援零延遲好友邀請對戰 -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.4/peerjs.min.js"></script>
   <style>
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
     body {
@@ -232,6 +230,8 @@
       from { opacity: 0; transform: scale(0.96); }
       to { opacity: 1; transform: scale(1); }
     }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+    .animate-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
   </style>
 </head>
 <body>
@@ -288,13 +288,39 @@
         <div style="font-size:12px; color:#6D4C41;">五子棋大逃殺！每 8 手外圍崩塌吸入黑洞，逼入中宮生死決！</div>
       </div>
 
-      <!-- MODE 06：好友邀請對戰（全新登場） -->
-      <div class="card" onclick="openOnlineModal()" style="border: 2px solid #2E7D32; background: linear-gradient(135deg, #FFFFFF 0%, #F1F8E9 100%);">
+      <!-- MODE 06：好友同屏對戰（替換連線） -->
+      <div class="card" onclick="startLocalMode()" style="border: 2px solid #2E7D32; background: linear-gradient(135deg, #FFFFFF 0%, #F1F8E9 100%);">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-          <div style="font-size:16px; font-weight:bold; color:#1B5E20;">👥 MODE 06｜好友邀請對戰 (即時連線)</div>
-          <span style="background:#2E7D32; color:#FFF; font-size:10px; padding:2px 7px; border-radius:10px; font-weight:bold;">全新</span>
+          <div style="font-size:16px; font-weight:bold; color:#1B5E20;">👥 MODE 06｜雙人同屏對戰 (面對面)</div>
+          <span style="background:#2E7D32; color:#FFF; font-size:10px; padding:2px 7px; border-radius:10px; font-weight:bold;">離線</span>
         </div>
-        <div style="font-size:12px; color:#33691E;">生成邀請連結傳給好友，手機或電腦點擊即可跨螢幕即時對弈！</div>
+        <div style="font-size:12px; color:#33691E;">同一台裝置，兩人面對面輪流落子，隨時展開真實切磋！</div>
+      </div>
+
+      <!-- 全新 MODE 07：遠端雲端連線對戰 -->
+      <div class="card" onclick="openOnlineLobby()" style="border: 2px solid #0277BD; background: linear-gradient(135deg, #FFFFFF 0%, #E1F5FE 100%);">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+          <div style="font-size:16px; font-weight:bold; color:#01579B;">🌐 MODE 07｜遠端連線對戰 (Online)</div>
+          <span style="background:#0277BD; color:#FFF; font-size:10px; padding:2px 7px; border-radius:10px; font-weight:bold;">雲端</span>
+        </div>
+        <div style="font-size:12px; color:#0277BD;">產生 6 碼房號，與遠方好友各自用手機即時對決！</div>
+      </div>
+    </div>
+
+    <!-- 遠端連線大廳面板 -->
+    <div id="viewOnlineLobby" class="hidden">
+      <div class="card" id="lobbyMenu" style="cursor:default; text-align:center; padding: 20px;">
+        <div style="font-size:18px; font-weight:bold; margin-bottom:16px; color:#0277BD;">🌐 遠端連線對戰大廳</div>
+        <button class="btn btn-gold" style="width:100%; padding:12px; margin-bottom:12px; font-size:14px;" onclick="createOnlineRoom()">建立新房間 (Host)</button>
+        <div style="margin: 16px 0; color: #7D5233; font-weight:bold; font-size:13px;">—— 或輸入房號加入 ——</div>
+        <input type="text" id="joinRoomInput" placeholder="輸入 6 碼數字" style="width:100%; padding:10px; border:2px solid #C89666; border-radius:8px; margin-bottom:12px; text-align:center; font-size:18px; letter-spacing:6px; font-weight:bold; color:#3E2723;" maxlength="6" pattern="\d*">
+        <button class="btn btn-brown" style="width:100%; padding:12px; font-size:14px;" onclick="joinOnlineRoom()">加入對戰 (Join)</button>
+      </div>
+      <div class="card hidden" id="lobbyWaiting" style="cursor:default; text-align:center; padding: 30px 20px;">
+        <div style="font-size:15px; font-weight:bold; color:#5D4037; margin-bottom:12px;">邀請好友輸入以下房號</div>
+        <div id="lobbyRoomCode" style="font-size:40px; font-weight:900; color:#1F6F5B; letter-spacing:8px; margin-bottom:20px; background:#F1F8E9; padding:12px; border-radius:12px; border:2px dashed #4CAF50;">123456</div>
+        <div style="font-size:13px; color:#0277BD; margin-bottom:24px;" class="animate-pulse">⏳ 正在等待對手連線...</div>
+        <button class="btn btn-gray" style="padding:10px 24px;" onclick="showMenu()">取消並離開</button>
       </div>
     </div>
 
@@ -356,17 +382,6 @@
         <button class="btn btn-gold" style="flex:1; padding:11px;" onclick="restartCurrentGame()">🔄 重新開始</button>
       </div>
 
-      <!-- 線上好友對戰專用：快捷悄悄話與互動按鈕 -->
-      <div id="onlineChatBar" class="hidden" style="margin-top:10px; background:#F1F8E9; border:1px solid #C5E1A5; border-radius:8px; padding:8px 10px;">
-        <div style="font-size:11px; font-weight:bold; color:#33691E; margin-bottom:6px;">💬 傳送線上悄悄話給好友：</div>
-        <div style="display:flex; gap:6px; flex-wrap:wrap;">
-          <button class="btn btn-light" style="font-size:11px; padding:4px 8px;" onclick="sendOnlineQuickMsg('☕ 喝口咖啡慢慢想，我不急～')">☕ 喝口咖啡</button>
-          <button class="btn btn-light" style="font-size:11px; padding:4px 8px;" onclick="sendOnlineQuickMsg('⚡ 這步棋下得太妙了吧！')">⚡ 這手太妙！</button>
-          <button class="btn btn-light" style="font-size:11px; padding:4px 8px;" onclick="sendOnlineQuickMsg('🔥 好棋！看我這手怎麼反擊')">🔥 準備接招</button>
-          <button class="btn btn-light" style="font-size:11px; padding:4px 8px;" onclick="sendOnlineQuickMsg('👋 這局好精彩！下把再來！')">👋 再來一局</button>
-        </div>
-      </div>
-
       <div id="resultBox" class="card hidden" style="margin-top:14px; text-align:center; border:2px solid #C89666; cursor:default;">
         <div id="resultTitle" style="font-size:17px; font-weight:bold; margin-bottom:6px; color:#1F6F5B;"></div>
         <div id="resultDesc" style="font-size:12px; color:#5D4037; margin-bottom:12px;"></div>
@@ -404,62 +419,6 @@
     </div>
   </div>
 
-  <!-- 👥 好友邀請對戰設定彈窗 -->
-  <div id="onlineModal" class="modal-overlay hidden" onclick="closeOnlineModal()">
-    <div class="modal-card" onclick="event.stopPropagation()">
-      <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid #E0C9A6; padding-bottom:10px; margin-bottom:14px;">
-        <div style="font-size:17px; font-weight:800; color:#3E2723;">👥 好友邀請對戰 ｜ 線上連線</div>
-        <button onclick="closeOnlineModal()" style="background:none; border:none; font-size:20px; font-weight:bold; color:#7D5233; cursor:pointer;">✕</button>
-      </div>
-
-      <div style="display:flex; gap:6px; margin-bottom:16px;">
-        <button id="tabCreateRoom" class="btn btn-brown" style="flex:1; padding:8px;" onclick="switchOnlineTab('create')">🏷️ 創建房間 (房主)</button>
-        <button id="tabJoinRoom" class="btn btn-light" style="flex:1; padding:8px;" onclick="switchOnlineTab('join')">🔗 加入房間 (房客)</button>
-      </div>
-
-      <!-- 創建房間分頁 -->
-      <div id="onlineCreatePanel">
-        <div style="font-size:13px; color:#5D4037; margin-bottom:12px; line-height:1.5;">
-          點擊下方按鈕創建專屬棋室，系統會生成專屬房號與邀請連結，發送給好友即可直接開戰！
-        </div>
-
-        <button class="btn btn-green" id="btnDoCreate" style="width:100%; padding:11px; font-size:14px; margin-bottom:14px;" onclick="createOnlineRoom()">
-          🎲 立即創建專屬棋室
-        </button>
-
-        <div id="createSuccessBox" class="hidden" style="background:#F9FBE7; border:1px solid #DCE775; border-radius:8px; padding:12px; text-align:center;">
-          <div style="font-size:12px; color:#827717; font-weight:bold; margin-bottom:4px;">您的專屬房間代碼</div>
-          <div id="displayRoomCode" style="font-size:26px; font-weight:900; letter-spacing:4px; color:#33691E; margin-bottom:10px;">888888</div>
-          
-          <input id="onlineShareInput" readonly style="width:100%; font-size:11px; padding:7px; border:1px solid #C89666; border-radius:6px; margin-bottom:8px; background:#FFF; text-align:center; color:#5D4037;" />
-          
-          <button class="btn btn-gold" style="width:100%; padding:9px; font-size:13px; font-weight:bold;" onclick="copyInviteLink()">
-            📋 複製邀請連結發給好友
-          </button>
-          <div id="copySuccessToast" class="hidden" style="font-size:11px; color:#2E7D32; font-weight:bold; margin-top:6px;">
-            ✅ 連結已複製！快發送給朋友，點擊即可加入！
-          </div>
-          
-          <div style="font-size:12px; color:#689F38; margin-top:12px; font-style:italic;">
-            ⏳ 正在等待好友加入... 請勿關閉此視窗
-          </div>
-        </div>
-      </div>
-
-      <!-- 加入房間分頁 -->
-      <div id="onlineJoinPanel" class="hidden">
-        <div style="font-size:13px; color:#5D4037; margin-bottom:10px;">
-          請輸入好友提供給您的 <strong>6 位數房間代碼</strong>：
-        </div>
-        <input type="text" id="inputRoomCode" placeholder="例如：123456" maxlength="6" style="width:100%; font-size:18px; padding:10px; border:2px solid #C89666; border-radius:8px; text-align:center; font-weight:bold; letter-spacing:3px; margin-bottom:12px; box-sizing:border-box;" />
-        <button class="btn btn-green" id="btnDoJoin" style="width:100%; padding:11px; font-size:14px;" onclick="joinOnlineRoomByInput()">
-          🚀 進入好友棋室
-        </button>
-        <div id="joinStatusText" style="font-size:12px; color:#E65100; text-align:center; margin-top:10px; font-weight:bold;"></div>
-      </div>
-    </div>
-  </div>
-
   <script>
     var SIZE = 15, EMPTY = 0, BLACK = 1, WHITE = 2;
     var board = [];
@@ -479,17 +438,14 @@
     var audioCtx = null;
     var isPaused = false;
 
-    // 線上對戰狀態
-    var onlinePeer = null;
-    var onlineConn = null;
-    var myOnlinePiece = BLACK;
-    var currentRoomId = null;
-    var isOnlineHost = false;
-
     var currentCampaignLevel = 1;
     var timedLimitSec = 20;
     var timedRemaining = 20;
     var timedTimer = null;
+
+    var onlineRole = null; // 'HOST' or 'GUEST'
+    var onlineRoomId = null;
+    var unsubOnline = null;
 
     var voidRings = 0;
     var VOID_STEP_INTERVAL = 8;
@@ -737,8 +693,12 @@
 
     function showMenu() {
       clearInterval(timedTimer);
+      if (unsubOnline) { unsubOnline(); unsubOnline = null; }
+      onlineRoomId = null;
+      onlineRole = null;
       document.getElementById('viewPlay').classList.add('hidden');
       document.getElementById('viewConfig').classList.add('hidden');
+      document.getElementById('viewOnlineLobby').classList.add('hidden');
       document.getElementById('viewMenu').classList.remove('hidden');
       document.getElementById('btnBack').classList.add('hidden');
     }
@@ -783,11 +743,123 @@
     function startCrystalMode() { gameMode = 'CRYSTAL'; startGameSession('CRYSTAL'); }
     function startCampaignMode(lv) { currentCampaignLevel = lv; gameMode = 'CAMPAIGN'; startGameSession('CAMPAIGN'); }
     function startVoidMode() { gameMode = 'VOID'; startGameSession('VOID'); }
+    function startLocalMode() { gameMode = 'LOCAL'; startGameSession('LOCAL'); }
+
+    // ====== 雲端連線大廳函數 ======
+    async function openOnlineLobby() {
+       updateWhisper('正在連線至雲端伺服器...');
+       var ready = await (window.fbInitPromise || Promise.resolve(false));
+       if (!ready || !window.fbAuth || !window.fbAuth.currentUser) {
+           updateWhisper('❌ 無法連線至伺服器，請稍後再試。');
+           return;
+       }
+       document.getElementById('viewMenu').classList.add('hidden');
+       document.getElementById('viewOnlineLobby').classList.remove('hidden');
+       document.getElementById('lobbyMenu').classList.remove('hidden');
+       document.getElementById('lobbyWaiting').classList.add('hidden');
+       document.getElementById('btnBack').classList.remove('hidden');
+       updateWhisper('🌐 歡迎來到雲端大廳！請建立房間或輸入好友的房號加入對局。');
+    }
+
+    async function createOnlineRoom() {
+       var code = Math.floor(100000 + Math.random() * 900000).toString();
+       onlineRoomId = code;
+       onlineRole = 'HOST';
+       var uid = window.fbAuth.currentUser.uid;
+       var roomRef = window.fbDoc(window.fbDb, 'artifacts', window.fbAppId, 'public', 'data', 'gomokuRooms', code);
+       
+       await window.fbSetDoc(roomRef, {
+           hostId: uid,
+           guestId: null,
+           status: 'WAITING',
+           createdAt: Date.now()
+       });
+
+       document.getElementById('lobbyMenu').classList.add('hidden');
+       document.getElementById('lobbyWaiting').classList.remove('hidden');
+       document.getElementById('lobbyRoomCode').textContent = code;
+       updateWhisper('房號 [' + code + '] 已建立！請將房號告訴您的好友...');
+       listenOnlineRoom();
+    }
+
+    async function joinOnlineRoom() {
+       var code = document.getElementById('joinRoomInput').value.trim();
+       if(code.length !== 6) { updateWhisper('請輸入完整的 6 位數房號。'); return; }
+       updateWhisper('正在搜尋房間...');
+       var uid = window.fbAuth.currentUser.uid;
+       var roomRef = window.fbDoc(window.fbDb, 'artifacts', window.fbAppId, 'public', 'data', 'gomokuRooms', code);
+       var snap = await window.fbGetDoc(roomRef);
+       
+       if (!snap.exists() || snap.data().status !== 'WAITING') {
+           updateWhisper('❌ 找不到該房間，或房間已在對局中。');
+           return;
+       }
+       onlineRoomId = code;
+       onlineRole = 'GUEST';
+       await window.fbSetDoc(roomRef, { guestId: uid, status: 'PLAYING' }, { merge: true });
+       document.getElementById('viewOnlineLobby').classList.add('hidden');
+       updateWhisper('成功加入房間！雲端對戰即將開始！');
+       startGameSession('ONLINE');
+       listenOnlineRoom();
+    }
+
+    function listenOnlineRoom() {
+        if(unsubOnline) unsubOnline();
+        var roomRef = window.fbDoc(window.fbDb, 'artifacts', window.fbAppId, 'public', 'data', 'gomokuRooms', onlineRoomId);
+        
+        unsubOnline = window.fbOnSnapshot(roomRef, function(snap) {
+            if (!snap.exists()) return;
+            var data = snap.data();
+            
+            if (onlineRole === 'HOST' && data.status === 'PLAYING' && gameMode !== 'ONLINE') {
+                document.getElementById('viewOnlineLobby').classList.add('hidden');
+                updateWhisper('對手已連線加入！遊戲開始！');
+                startGameSession('ONLINE');
+                return;
+            }
+            if (gameMode === 'ONLINE' && data.updatedAt && data.currentTurn !== currentTurn) {
+                // 對手已落子，同步狀態
+                board = JSON.parse(data.board);
+                crystalBoard = JSON.parse(data.crystalBoard);
+                shieldBoard = JSON.parse(data.shieldBoard);
+                historyStack = JSON.parse(data.historyStack);
+                currentTurn = data.currentTurn;
+                isOver = data.isOver;
+                lastPos = data.lastPos ? JSON.parse(data.lastPos) : null;
+                winCoords = data.winCoords ? JSON.parse(data.winCoords) : null;
+                
+                playTone(currentTurn === BLACK ? 340 : 420, 0.06); 
+                renderBoard();
+
+                if (isOver && winCoords) {
+                   showResult('🎉 雲端對局結束！', '這是一場精彩的跨螢幕對決！', false);
+                }
+            }
+        }, function(error) { console.error("連線中斷:", error); });
+    }
+
+    function syncStateToFirebase() {
+       if(gameMode !== 'ONLINE' || !onlineRoomId) return;
+       var roomRef = window.fbDoc(window.fbDb, 'artifacts', window.fbAppId, 'public', 'data', 'gomokuRooms', onlineRoomId);
+       var state = {
+           board: JSON.stringify(board),
+           crystalBoard: JSON.stringify(crystalBoard),
+           shieldBoard: JSON.stringify(shieldBoard),
+           historyStack: JSON.stringify(historyStack),
+           currentTurn: currentTurn,
+           isOver: isOver,
+           lastPos: lastPos ? JSON.stringify(lastPos) : null,
+           winCoords: winCoords ? JSON.stringify(winCoords) : null,
+           updatedAt: Date.now()
+       };
+       window.fbSetDoc(roomRef, state, { merge: true }).catch(console.error);
+    }
 
     function startGameSession(mode) {
       gameMode = mode;
       document.getElementById('viewMenu').classList.add('hidden');
       document.getElementById('viewConfig').classList.add('hidden');
+      document.getElementById('viewOnlineLobby').classList.add('hidden');
       document.getElementById('viewPlay').classList.remove('hidden');
       document.getElementById('btnBack').classList.remove('hidden');
       document.getElementById('resultBox').classList.add('hidden');
@@ -831,7 +903,14 @@
       var subTitle = document.getElementById('subHeaderTitle');
       subHeaderCtrl.innerHTML = '';
 
-      if (mode === 'CRYSTAL') {
+      if (mode === 'ONLINE') {
+        subTitle.textContent = `🌐 遠端連線對戰 (房號: ${onlineRoomId})`;
+        var roleBadge = document.createElement('span');
+        roleBadge.style.cssText = 'font-size:11px; font-weight:bold; color:#0277BD; border:1px solid #0277BD; padding:2px 6px; border-radius:6px;';
+        roleBadge.textContent = onlineRole === 'HOST' ? '🏠 房主 (執黑)' : '👤 訪客 (執白)';
+        subHeaderCtrl.appendChild(roleBadge);
+        playerColor = onlineRole === 'HOST' ? BLACK : WHITE;
+      } else if (mode === 'CRYSTAL') {
         subTitle.textContent = '⚡ 靈能晶石棋陣';
         var teachBtn = document.createElement('button');
         teachBtn.className = 'btn btn-light';
@@ -858,6 +937,8 @@
         voidBadge.style.cssText = 'font-size:12px; font-weight:bold; color:#7B1FA2;';
         voidBadge.textContent = '縮圈倒數: 8 手';
         subHeaderCtrl.appendChild(voidBadge);
+      } else if (mode === 'LOCAL') {
+        subTitle.textContent = '👥 雙人同屏對戰 (面對面)';
       } else {
         var diffNames = { BEGINNER: '簡單', NORMAL: '普通', HARD: '困難', MASTER: '大師' };
         subTitle.textContent = `🤖 AI 對戰 (${diffNames[aiDifficulty]})`;
@@ -978,7 +1059,12 @@
         }
       }
       document.getElementById('statusExtra').textContent = '手數：' + historyStack.length;
-      var statusMsg = isOver ? '對局結束' : aiBusy ? '⚡ AI 思考中...' : (playerColor === BLACK ? '● 執黑' : '○ 執白') + '｜輪到你落子';
+      var statusMsg = '';
+      if (isOver) statusMsg = '對局結束';
+      else if (aiBusy) statusMsg = '⚡ AI 思考中...';
+      else if (gameMode === 'LOCAL') statusMsg = (currentTurn === BLACK ? '● 黑方' : '○ 白方') + ' 落子';
+      else if (gameMode === 'ONLINE') statusMsg = (currentTurn === BLACK ? '● 黑方' : '○ 白方') + ((onlineRole === 'HOST' && currentTurn === BLACK) || (onlineRole === 'GUEST' && currentTurn === WHITE) ? ' (你的回合)' : ' (對手思考中...)');
+      else statusMsg = (playerColor === BLACK ? '● 執黑' : '○ 執白') + '｜輪到你落子';
       document.getElementById('statusText').textContent = statusMsg;
     }
 
@@ -1003,29 +1089,35 @@
     function onCellTap(r, c) {
       if (isOver || isPaused || board[r][c] !== EMPTY || isCellVoid(r, c)) return;
 
-      // 線上好友對戰邏輯
       if (gameMode === 'ONLINE') {
-        if (!onlineConn || !onlineConn.open) {
-          updateWhisper('⚠️ 好友尚未連線或已中斷！');
-          return;
+        if ((onlineRole === 'HOST' && currentTurn !== BLACK) || (onlineRole === 'GUEST' && currentTurn !== WHITE)) {
+            updateWhisper('⏳ 還沒輪到你落子喔！請等待對手...');
+            return;
         }
-        if (currentTurn !== myOnlinePiece) {
-          updateWhisper('⏳ 還沒輪到你喔，請等待好友思考落子！');
-          return;
+        var isLocalCrystal = triggerCrystalEffect(r, c, currentTurn);
+        placeStone(r, c, currentTurn, isLocalCrystal);
+        var localWin = checkWinLine(board, r, c, currentTurn);
+        if (localWin) {
+            winCoords = localWin;
+            isOver = true;
+            updateWhisper('🎉 恭喜勝利！精彩的遠端對弈！');
+            showResult('🎉 恭喜獲勝！', '您在雲端對戰中擊敗了對手！', false);
+            renderBoard();
         }
+        syncStateToFirebase();
+        return;
+      }
 
-        placeStone(r, c, myOnlinePiece, false);
-        try {
-          onlineConn.send({ type: 'move', r: r, c: c, piece: myOnlinePiece });
-        } catch(e) {}
-
-        var myWin = checkWinLine(board, r, c, myOnlinePiece);
-        if (myWin) {
-          winCoords = myWin;
+      if (gameMode === 'LOCAL') {
+        var isLocalCrystal = triggerCrystalEffect(r, c, currentTurn);
+        placeStone(r, c, currentTurn, isLocalCrystal);
+        var localWin = checkWinLine(board, r, c, currentTurn);
+        if (localWin) {
+          winCoords = localWin;
           isOver = true;
-          try { onlineConn.send({ type: 'win', line: myWin }); } catch(e) {}
-          updateWhisper('🎉 恭喜獲勝！你在好友連線對決中俐落勝出！⭐⭐⭐');
-          showResult('🎉 勝利！擊敗好友 ⭐⭐⭐', '你在這場精彩的連線對弈中率先連成五子！', false);
+          var winnerName = currentTurn === BLACK ? '白方' : '黑方';
+          updateWhisper('🎉 恭喜！' + winnerName + ' 獲得了勝利！⭐⭐⭐');
+          showResult('🎉 勝利！' + winnerName + ' 獲勝', '這是一場精彩的面對面對決！', false);
           renderBoard();
         }
         return;
@@ -1051,212 +1143,6 @@
         renderBoard();
         setTimeout(aiTurn, 260);
       }
-    }
-
-    // ====== 👥 好友邀請對戰連線邏輯 (WebRTC PeerJS) ======
-    function openOnlineModal() {
-      document.getElementById('onlineModal').classList.remove('hidden');
-      switchOnlineTab('create');
-    }
-
-    function closeOnlineModal() {
-      document.getElementById('onlineModal').classList.add('hidden');
-    }
-
-    function switchOnlineTab(tab) {
-      var tCreate = document.getElementById('tabCreateRoom');
-      var tJoin = document.getElementById('tabJoinRoom');
-      var pCreate = document.getElementById('onlineCreatePanel');
-      var pJoin = document.getElementById('onlineJoinPanel');
-
-      if (tab === 'create') {
-        tCreate.className = 'btn btn-brown';
-        tJoin.className = 'btn btn-light';
-        pCreate.classList.remove('hidden');
-        pJoin.classList.add('hidden');
-      } else {
-        tCreate.className = 'btn btn-light';
-        tJoin.className = 'btn btn-brown';
-        pCreate.classList.add('hidden');
-        pJoin.classList.remove('hidden');
-      }
-    }
-
-    function createOnlineRoom() {
-      var btn = document.getElementById('btnDoCreate');
-      btn.disabled = true;
-      btn.textContent = '⏳ 正在建立房間...';
-
-      var code = Math.floor(100000 + Math.random() * 900000).toString();
-      currentRoomId = code;
-      isOnlineHost = true;
-      myOnlinePiece = BLACK;
-
-      if (onlinePeer) {
-        try { onlinePeer.destroy(); } catch(e) {}
-      }
-
-      onlinePeer = new Peer('joan-gomoku-' + code);
-
-      onlinePeer.on('open', function(id) {
-        document.getElementById('displayRoomCode').textContent = code;
-        var fullUrl = window.location.origin + window.location.pathname + '?room=' + code;
-        var shareInput = document.getElementById('onlineShareInput');
-        shareInput.value = fullUrl;
-        document.getElementById('createSuccessBox').classList.remove('hidden');
-        btn.classList.add('hidden');
-      });
-
-      onlinePeer.on('connection', function(conn) {
-        onlineConn = conn;
-        setupOnlineConnectionEvents();
-        closeOnlineModal();
-        startOnlineGameSession(true);
-      });
-
-      onlinePeer.on('error', function(err) {
-        btn.disabled = false;
-        btn.textContent = '🎲 立即創建專屬棋室';
-        document.getElementById('displayRoomCode').textContent = '重試中';
-      });
-    }
-
-    function joinOnlineRoomByInput() {
-      var input = document.getElementById('inputRoomCode');
-      var code = input.value.trim();
-      if (!code || code.length < 6) {
-        document.getElementById('joinStatusText').textContent = '請輸入正確的 6 位數房間代碼！';
-        return;
-      }
-      joinOnlineRoom(code);
-    }
-
-    function joinOnlineRoom(code) {
-      currentRoomId = code;
-      isOnlineHost = false;
-      myOnlinePiece = WHITE;
-
-      var status = document.getElementById('joinStatusText');
-      status.textContent = '🚀 正在連線進入房間 ' + code + '...';
-
-      if (onlinePeer) {
-        try { onlinePeer.destroy(); } catch(e) {}
-      }
-
-      onlinePeer = new Peer();
-
-      onlinePeer.on('open', function() {
-        var conn = onlinePeer.connect('joan-gomoku-' + code);
-        onlineConn = conn;
-
-        conn.on('open', function() {
-          status.textContent = '✅ 連線成功！正在進入對局...';
-          setupOnlineConnectionEvents();
-          closeOnlineModal();
-          startOnlineGameSession(false);
-        });
-
-        conn.on('error', function() {
-          status.textContent = '❌ 連線失敗，請檢查房號是否正確！';
-        });
-      });
-
-      onlinePeer.on('error', function(err) {
-        status.textContent = '❌ 連線伺服器異常，請稍後再試！';
-      });
-    }
-
-    function setupOnlineConnectionEvents() {
-      if (!onlineConn) return;
-
-      onlineConn.on('data', function(data) {
-        if (data.type === 'move') {
-          placeStone(data.r, data.c, data.piece, false);
-          playTone(data.piece === BLACK ? 420 : 340, 0.06);
-          updateWhisper('✨ 好友在 (' + (data.r + 1) + ', ' + (data.c + 1) + ') 落子！輪到你出招囉。');
-          renderBoard();
-        } else if (data.type === 'win') {
-          winCoords = data.line;
-          isOver = true;
-          updateWhisper('🍵 好友率先完成五子連線！這是一場超精彩的切磋！');
-          showResult('🍵 好友獲勝！', '好友率先完成連珠五子，下一場贏回來！', false);
-          renderBoard();
-        } else if (data.type === 'whisper') {
-          updateWhisper('💬 好友捎來話語：' + data.text);
-        } else if (data.type === 'restart') {
-          startOnlineGameSession(isOnlineHost);
-          updateWhisper('🔄 好友已重新開啟棋局，新的對決開始！');
-        }
-      });
-
-      onlineConn.on('close', function() {
-        updateWhisper('⚠️ 好友已退出或中斷連線。');
-        document.getElementById('statusText').textContent = '⚠️ 好友已斷線';
-      });
-    }
-
-    function startOnlineGameSession(asHost) {
-      gameMode = 'ONLINE';
-      document.getElementById('viewMenu').classList.add('hidden');
-      document.getElementById('viewConfig').classList.add('hidden');
-      document.getElementById('viewPlay').classList.remove('hidden');
-      document.getElementById('btnBack').classList.remove('hidden');
-      document.getElementById('resultBox').classList.add('hidden');
-      document.getElementById('onlineChatBar').classList.remove('hidden');
-      document.getElementById('btnUndo').classList.add('hidden'); // 線上對戰停用悔棋
-
-      board = [];
-      crystalBoard = [];
-      shieldBoard = [];
-      for (var r = 0; r < SIZE; r++) {
-        board[r] = [];
-        crystalBoard[r] = [];
-        shieldBoard[r] = [];
-        for (var c = 0; c < SIZE; c++) {
-          board[r][c] = EMPTY;
-          crystalBoard[r][c] = 0;
-          shieldBoard[r][c] = false;
-        }
-      }
-
-      historyStack = [];
-      isOver = false;
-      aiBusy = false;
-      lastPos = null;
-      winCoords = null;
-      isPaused = false;
-      currentTurn = BLACK;
-      playerColor = myOnlinePiece;
-
-      var subTitle = document.getElementById('subHeaderTitle');
-      var subCtrl = document.getElementById('subHeaderControl');
-      subCtrl.innerHTML = '<span style="background:#E8F5E9; color:#2E7D32; border:1px solid #81C784; padding:3px 8px; border-radius:10px; font-size:11px; font-weight:bold;">🟢 線上對戰中</span>';
-      subTitle.textContent = '👥 房號: ' + currentRoomId + ' (' + (asHost ? '● 房主執黑' : '○ 房客執白') + ')';
-
-      updateWhisper('🤝 好友連線成功！' + (asHost ? '你執黑先手，請落子！' : '好友執黑先手，等待好友落子...'));
-      renderBoard();
-    }
-
-    function sendOnlineQuickMsg(msg) {
-      if (onlineConn && onlineConn.open) {
-        onlineConn.send({ type: 'whisper', text: msg });
-        updateWhisper('💬 你對好友說：' + msg);
-      }
-    }
-
-    function copyInviteLink() {
-      var copyInput = document.getElementById('onlineShareInput');
-      if (!copyInput) return;
-      copyInput.select();
-      copyInput.setSelectionRange(0, 99999);
-      try {
-        document.execCommand('copy');
-        var toast = document.getElementById('copySuccessToast');
-        if (toast) {
-          toast.classList.remove('hidden');
-          setTimeout(function() { toast.classList.add('hidden'); }, 3000);
-        }
-      } catch (e) {}
     }
 
     // ====== 落子與遊戲控制函數 ======
@@ -1288,17 +1174,23 @@
 
     function restartCurrentGame() {
       if (gameMode === 'ONLINE') {
-        if (onlineConn && onlineConn.open) {
-          onlineConn.send({ type: 'restart' });
-        }
-        startOnlineGameSession(isOnlineHost);
-      } else {
-        startGameSession(gameMode);
+          if (onlineRole !== 'HOST') {
+              updateWhisper('❌ 只有房主 (Host) 可以重新開始新局喔！');
+              return;
+          }
+          startGameSession('ONLINE');
+          syncStateToFirebase();
+          return;
       }
+      startGameSession(gameMode);
     }
 
     function undoMove() {
-      if (isOver || aiBusy || gameMode === 'ONLINE' || historyStack.length === 0) return;
+      if (gameMode === 'ONLINE') {
+          updateWhisper('🔒 遠端連線對戰為了確保公平與同步，不支援悔棋功能喔！');
+          return;
+      }
+      if (isOver || aiBusy || historyStack.length === 0) return;
 
       var stepsToUndo = 1;
       if (gameMode === 'AI' || gameMode === 'CAMPAIGN' || gameMode === 'TIMED' || gameMode === 'VOID') {
@@ -1320,6 +1212,9 @@
         winCoords = null;
         isOver = false;
         currentTurn = playerColor;
+        if (gameMode === 'LOCAL') {
+          currentTurn = historyStack.length > 0 ? (historyStack[historyStack.length - 1].p === BLACK ? WHITE : BLACK) : BLACK;
+        }
         document.getElementById('resultBox').classList.add('hidden');
         updateWhisper('↩ 已成功悔棋，重整陣勢再出發！');
         renderBoard();
@@ -1571,21 +1466,46 @@
       renderBoard();
     }
 
-    // 檢查網址是否有帶房號 (?room=xxxxxx)，自動加入房間
     window.addEventListener('DOMContentLoaded', function() {
       initGrid();
       showMenu();
-      try {
-        var params = new URLSearchParams(window.location.search);
-        var roomCode = params.get('room');
-        if (roomCode && roomCode.length >= 6) {
-          openOnlineModal();
-          switchOnlineTab('join');
-          document.getElementById('inputRoomCode').value = roomCode;
-          joinOnlineRoom(roomCode);
-        }
-      } catch(e) {}
     });
+  </script>
+
+  <!-- Firebase 雲端同步模組 -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, doc, setDoc, getDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    window.fbInitPromise = (async () => {
+      try {
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'joan-gomoku-app';
+        const configStr = typeof __firebase_config !== 'undefined' ? __firebase_config : '{}';
+        const config = JSON.parse(configStr);
+        if (!config.apiKey) return false;
+        
+        const app = initializeApp(config);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        const token = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        if (token) await signInWithCustomToken(auth, token);
+        else await signInAnonymously(auth);
+
+        window.fbDb = db;
+        window.fbAuth = auth;
+        window.fbAppId = appId;
+        window.fbDoc = doc;
+        window.fbSetDoc = setDoc;
+        window.fbGetDoc = getDoc;
+        window.fbOnSnapshot = onSnapshot;
+        return true;
+      } catch (e) {
+        console.error("Firebase Initialization Failed:", e);
+        return false;
+      }
+    })();
   </script>
 </body>
 </html>
