@@ -188,7 +188,8 @@
     <!-- 遠端連線大廳面板 -->
     <div id="viewOnlineLobby" class="hidden">
       <!-- 內建瀏覽器警告 (動態顯示) -->
-      <div id="inAppWarning" class="hidden" style="background:#FFF3E0; border:2px solid #FF9800; border-radius:8px; padding:12px; margin-bottom:12px; text-align:center;">
+      <div id="inAppWarning" class="hidden" style="position:relative; background:#FFF3E0; border:2px solid #FF9800; border-radius:8px; padding:12px; margin-bottom:12px; text-align:center;">
+        <button onclick="document.getElementById('inAppWarning').classList.add('hidden')" style="position:absolute; top:4px; right:8px; background:none; border:none; font-size:18px; font-weight:bold; color:#E65100; cursor:pointer;">✕</button>
         <div style="font-weight:bold; color:#E65100; margin-bottom:4px;">⚠️ 偵測到您使用 LINE / FB 內建瀏覽器</div>
         <div style="font-size:12px; color:#5D4037;">這可能會阻擋連線！請點擊右上角「⋮」選擇<br><strong>「使用預設瀏覽器開啟 (Safari/Chrome)」</strong></div>
       </div>
@@ -484,9 +485,7 @@
     // ====== 雲端連線大廳 (強化防斷線機制) ======
     function checkInAppBrowser() {
       var ua = navigator.userAgent || navigator.vendor || window.opera;
-      if ((ua.indexOf("FBAN") > -1) || (ua.indexOf("FBAV") > -1) || (ua.indexOf("Instagram") > -1) || (ua.indexOf("Line") > -1)) {
-        document.getElementById('inAppWarning').classList.remove('hidden');
-      }
+      return ((ua.indexOf("FBAN") > -1) || (ua.indexOf("FBAV") > -1) || (ua.indexOf("Instagram") > -1) || (ua.indexOf("Line") > -1));
     }
 
     function setLobbyStatus(msg, isError) {
@@ -504,7 +503,7 @@
     };
 
     function openOnlineLobby() {
-       checkInAppBrowser();
+       document.getElementById('inAppWarning').classList.add('hidden');
        document.getElementById('viewMenu').classList.add('hidden');
        document.getElementById('viewOnlineLobby').classList.remove('hidden');
        document.getElementById('lobbyMenu').classList.remove('hidden');
@@ -540,10 +539,12 @@
            });
            
            peer.on('error', function(err) {
+               if (checkInAppBrowser()) document.getElementById('inAppWarning').classList.remove('hidden');
                if(err.type === 'unavailable-id') setLobbyStatus('❌ 房號衝突，請重試。', true);
                else setLobbyStatus('❌ 建立房間失敗，請使用 Safari/Chrome 開啟。', true);
            });
        } catch (e) {
+           if (checkInAppBrowser()) document.getElementById('inAppWarning').classList.remove('hidden');
            setLobbyStatus('❌ 瀏覽器不支援 WebRTC，請使用 Safari/Chrome。', true);
        }
     }
@@ -577,10 +578,12 @@
                        setLobbyStatus('❌ 找不到房號 ' + code + '，請確認房主「還停留在遊戲畫面中」(切換APP會斷線喔)。', true);
                    }
                } else {
+                   if (checkInAppBrowser()) document.getElementById('inAppWarning').classList.remove('hidden');
                    setLobbyStatus('❌ 網路異常 (' + err.type + ')', true);
                }
            });
        } catch (e) {
+           if (checkInAppBrowser()) document.getElementById('inAppWarning').classList.remove('hidden');
            setLobbyStatus('❌ 瀏覽器不支援，請使用 Safari/Chrome。', true);
        }
     }
@@ -854,8 +857,3 @@
   </script>
 </body>
 </html>
-```
-
-### 🎯 本次升級亮點與測試步驟：
-1. **內建瀏覽器警告**：如果你再用 LINE 點開，畫面上方會出現黃色警告，提醒你點右上角「用預設瀏覽器(Safari)」開啟，這樣 P2P 連線就不會被 LINE 惡意封鎖了！
-2. **斷線重試**：當你的朋友在房間大廳複製連結並切換到 LINE 時，他的手機瀏覽器其實已經「被休眠」了，因此當你點擊加入時會顯示找不到。現在程式會聰明地**每 2 秒幫你自動重新連線一次，連試 3 次**，給對方時間切回網頁！
