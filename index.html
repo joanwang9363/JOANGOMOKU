@@ -762,6 +762,17 @@
       }
     }
 
+    // 新增：強化版 P2P 連線設定，加入 Google 與 Twilio 全球 STUN 伺服器穿透防火牆
+    var peerConfig = {
+        config: {
+            'iceServers': [
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'stun:stun1.l.google.com:19302' },
+                { urls: 'stun:global.stun.twilio.com:3478' }
+            ]
+        }
+    };
+
     // ====== 雲端連線大廳函數 (改為 PeerJS 點對點連線) ======
     function openOnlineLobby() {
        document.getElementById('viewMenu').classList.add('hidden');
@@ -779,7 +790,8 @@
            onlineRoomId = code;
            onlineRole = 'HOST';
            
-           peer = new Peer('joangomoku-' + code);
+           // 套用強化版連線設定
+           peer = new Peer('joangomoku-' + code, peerConfig);
            
            peer.on('open', function(id) {
                document.getElementById('lobbyMenu').classList.add('hidden');
@@ -818,18 +830,31 @@
        
        onlineRoomId = code;
        onlineRole = 'GUEST';
-       setLobbyStatus('⏳ 正在尋找房間並建立連線，請稍候...', false);
+       setLobbyStatus('⏳ 正在連接至伺服器...', false);
        
        try {
-           peer = new Peer();
+           // 套用強化版連線設定
+           peer = new Peer(peerConfig);
            peer.on('open', function(id) {
-               setLobbyStatus('⏳ 房間已找到，正在等待雙方同步資料...', false);
+               setLobbyStatus('⏳ 正在配對房號 ' + code + '，建立通道中...', false);
                peerConn = peer.connect('joangomoku-' + code, { reliable: true });
+               
                setupPeerConnection();
+               
+               // 加入連線逾時偵測 (7秒)
+               setTimeout(function() {
+                   if (peerConn && !peerConn.open) {
+                       setLobbyStatus('❌ 連線逾時：房主可能已離開或網路防火牆阻擋', true);
+                   }
+               }, 7000);
            });
            
            peer.on('error', function(err) {
-               setLobbyStatus('❌ 連線失敗: 找不到該房間或網路異常', true);
+               if (err.type === 'peer-unavailable') {
+                   setLobbyStatus('❌ 找不到房號 ' + code + '，請確認房主還在大廳中。', true);
+               } else {
+                   setLobbyStatus('❌ 網路異常 (' + err.type + ')', true);
+               }
            });
        } catch (e) {
            setLobbyStatus('❌ 瀏覽器不支援，請使用 Safari 或 Chrome 開啟。', true);
@@ -837,13 +862,20 @@
     }
 
     function setupPeerConnection() {
-        peerConn.on('open', function() {
+        var initGame = function() {
             document.getElementById('viewOnlineLobby').classList.add('hidden');
             updateWhisper('✅ 連線成功！遊戲開始！');
             startGameSession('ONLINE');
             
             if(onlineRole === 'HOST') syncStateToPeer();
-        });
+        };
+
+        // 確保通道狀態正確綁定
+        if (peerConn.open) {
+            initGame();
+        } else {
+            peerConn.on('open', initGame);
+        }
 
         peerConn.on('data', function(data) {
             if (gameMode !== 'ONLINE') return;
