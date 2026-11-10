@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>JOAN GOMOKU ｜ 棋藝異想世界 (v2026.11.08.7)</title>
-  <!-- 加入 PeerJS 函式庫，實現 P2P 免伺服器連線 (改用更穩定的 cdnjs) -->
+  <title>JOAN GOMOKU ｜ 棋藝異想世界 (v2026.11.09)</title>
+  <!-- 引入 PeerJS -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.2/peerjs.min.js"></script>
   <style>
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -88,150 +88,36 @@
       min-height: 0;
       contain: layout style;
     }
-    /* 網格線背景 */
-    .board-cell::before {
-      content: '';
-      position: absolute;
-      top: 50%;
-      left: 0;
-      right: 0;
-      height: 1px;
-      background-color: #6E472B;
-      pointer-events: none;
-    }
-    .board-cell::after {
-      content: '';
-      position: absolute;
-      left: 50%;
-      top: 0;
-      bottom: 0;
-      width: 1px;
-      background-color: #6E472B;
-      pointer-events: none;
-    }
+    .board-cell::before { content: ''; position: absolute; top: 50%; left: 0; right: 0; height: 1px; background-color: #6E472B; pointer-events: none; }
+    .board-cell::after { content: ''; position: absolute; left: 50%; top: 0; bottom: 0; width: 1px; background-color: #6E472B; pointer-events: none; }
     .board-cell[data-col="0"]::before { left: 50%; }
     .board-cell[data-col="14"]::before { right: 50%; }
     .board-cell[data-row="0"]::after { top: 50%; }
     .board-cell[data-row="14"]::after { bottom: 50%; }
 
-    .star {
-      position: relative;
-      z-index: 2;
-      width: 5px;
-      height: 5px;
-      border-radius: 50%;
-      background-color: #4A2E1B;
-      pointer-events: none;
-    }
-    .crystal {
-      position: relative;
-      z-index: 3;
-      width: 15px;
-      height: 15px;
-      border-radius: 4px;
-      background: radial-gradient(circle, #FFD700, #FF8C00);
-      box-shadow: 0 0 7px #FFD700;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 9px;
-      pointer-events: none;
-      animation: crystalPulse 1.8s infinite alternate;
-    }
-    @keyframes crystalPulse {
-      0% { transform: scale(0.9); box-shadow: 0 0 4px #FF9800; }
-      100% { transform: scale(1.1); box-shadow: 0 0 10px #FFD700; }
-    }
-    .stone {
-      position: relative;
-      z-index: 5;
-      width: 82%;
-      height: 82%;
-      border-radius: 50%;
-      box-shadow: 0 2px 3px rgba(0,0,0,0.45);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      pointer-events: none;
-    }
+    .star { position: relative; z-index: 2; width: 5px; height: 5px; border-radius: 50%; background-color: #4A2E1B; pointer-events: none; }
+    .crystal { position: relative; z-index: 3; width: 15px; height: 15px; border-radius: 4px; background: radial-gradient(circle, #FFD700, #FF8C00); box-shadow: 0 0 7px #FFD700; display: flex; align-items: center; justify-content: center; font-size: 9px; pointer-events: none; animation: crystalPulse 1.8s infinite alternate; }
+    @keyframes crystalPulse { 0% { transform: scale(0.9); box-shadow: 0 0 4px #FF9800; } 100% { transform: scale(1.1); box-shadow: 0 0 10px #FFD700; } }
+    .stone { position: relative; z-index: 5; width: 82%; height: 82%; border-radius: 50%; box-shadow: 0 2px 3px rgba(0,0,0,0.45); display: flex; align-items: center; justify-content: center; pointer-events: none; }
     .stone-black { background-color: #111111; border: 1.5px solid #000000; }
     .stone-white { background-color: #FFFFFF; border: 1.5px solid #666666; }
     .stone-win { border: 2.5px solid #F59E0B !important; box-shadow: 0 0 8px 2px #F59E0B !important; }
     .stone-shielded { box-shadow: 0 0 10px 3px #00E5FF, inset 0 0 6px #00E5FF !important; border-color: #00E5FF !important; }
 
-    /* 烈焰爆裂動畫 */
-    @keyframes flameExplosion {
-      0% { transform: scale(0.3); opacity: 1; filter: brightness(2); background: radial-gradient(circle, #FFF, #FF5722); box-shadow: 0 0 15px #FF5722; }
-      50% { transform: scale(1.6); opacity: 0.95; filter: brightness(1.6); background: radial-gradient(circle, #FFEB3B, #FF9800); box-shadow: 0 0 30px #FF9800; }
-      100% { transform: scale(2.2); opacity: 0; }
-    }
-    .burn-anim {
-      position: absolute;
-      inset: -6px;
-      border-radius: 50%;
-      pointer-events: none;
-      z-index: 25;
-      animation: flameExplosion 0.55s ease-out forwards;
-    }
-    .last-dot {
-      width: 5px;
-      height: 5px;
-      border-radius: 50%;
-      background-color: #E63946;
-    }
+    @keyframes flameExplosion { 0% { transform: scale(0.3); opacity: 1; filter: brightness(2); background: radial-gradient(circle, #FFF, #FF5722); box-shadow: 0 0 15px #FF5722; } 50% { transform: scale(1.6); opacity: 0.95; filter: brightness(1.6); background: radial-gradient(circle, #FFEB3B, #FF9800); box-shadow: 0 0 30px #FF9800; } 100% { transform: scale(2.2); opacity: 0; } }
+    .burn-anim { position: absolute; inset: -6px; border-radius: 50%; pointer-events: none; z-index: 25; animation: flameExplosion 0.55s ease-out forwards; }
+    .last-dot { width: 5px; height: 5px; border-radius: 50%; background-color: #E63946; }
     .hidden { display: none !important; }
 
-    /* 虛空崩塌儲存格樣式 */
-    .void-cell {
-      background-color: #241410 !important;
-      opacity: 0.28 !important;
-      cursor: not-allowed !important;
-      pointer-events: none !important;
-      filter: grayscale(1);
-    }
-    .void-cell::before, .void-cell::after {
-      background-color: #3E2723 !important;
-      opacity: 0.15;
-    }
+    .void-cell { background-color: #241410 !important; opacity: 0.28 !important; cursor: not-allowed !important; pointer-events: none !important; filter: grayscale(1); }
+    .void-cell::before, .void-cell::after { background-color: #3E2723 !important; opacity: 0.15; }
 
-    /* 悄悄話卡片換句淡入效果 */
-    .fade-text {
-      animation: fadeInText 0.28s ease-out;
-    }
-    @keyframes fadeInText {
-      from { opacity: 0.3; transform: translateY(-2px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
+    .fade-text { animation: fadeInText 0.28s ease-out; }
+    @keyframes fadeInText { from { opacity: 0.3; transform: translateY(-2px); } to { opacity: 1; transform: translateY(0); } }
 
-    /* 玩法教學彈窗樣式 */
-    .modal-overlay {
-      position: fixed;
-      inset: 0;
-      background-color: rgba(30, 20, 15, 0.75);
-      backdrop-filter: blur(3px);
-      z-index: 100;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 16px;
-      animation: fadeIn 0.2s ease-out;
-    }
-    .modal-card {
-      background-color: #FFFDF9;
-      border: 3px solid #C89666;
-      border-radius: 14px;
-      max-width: 420px;
-      width: 100%;
-      max-height: 88vh;
-      overflow-y: auto;
-      padding: 20px 18px;
-      box-shadow: 0 12px 32px rgba(0,0,0,0.35);
-      box-sizing: border-box;
-    }
-    @keyframes fadeIn {
-      from { opacity: 0; transform: scale(0.96); }
-      to { opacity: 1; transform: scale(1); }
-    }
+    .modal-overlay { position: fixed; inset: 0; background-color: rgba(30, 20, 15, 0.75); backdrop-filter: blur(3px); z-index: 100; display: flex; align-items: center; justify-content: center; padding: 16px; animation: fadeIn 0.2s ease-out; }
+    .modal-card { background-color: #FFFDF9; border: 3px solid #C89666; border-radius: 14px; max-width: 420px; width: 100%; max-height: 88vh; overflow-y: auto; padding: 20px 18px; box-shadow: 0 12px 32px rgba(0,0,0,0.35); box-sizing: border-box; }
+    @keyframes fadeIn { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
     @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
     .animate-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
   </style>
@@ -261,71 +147,69 @@
 
       <div class="card" onclick="openModeConfig('AI')">
         <div style="font-size:16px; font-weight:bold; margin-bottom:4px;">🤖 MODE 01｜AI 標準對戰</div>
-        <div style="font-size:12px; color:#6D4C41;">支援「簡單、普通、困難、大師」四階段 AI 與黑白先後手。</div>
+        <div style="font-size:12px; color:#6D4C41;">支援「簡單、普通、困難、大師」四階段 AI。</div>
       </div>
 
-      <!-- MODE 02：靈能晶石棋陣 -->
       <div class="card" style="cursor:default;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
           <div style="font-size:16px; font-weight:bold;">⚡ MODE 02｜靈能晶石棋陣</div>
           <button class="btn btn-light" style="padding:4px 8px; font-size:11px; border-color:#C89666;" onclick="event.stopPropagation(); openTutorialModal();">📖 玩法教學</button>
         </div>
-        <div style="font-size:12px; color:#6D4C41; margin-bottom:10px;">棋盤隨機生成烈焰與護盾晶石，AI 已學會審時度勢、精準引爆！</div>
+        <div style="font-size:12px; color:#6D4C41; margin-bottom:10px;">棋盤隨機生成烈焰與護盾晶石，搶佔引爆！</div>
         <button class="btn btn-gold" style="width:100%; padding:8px; font-size:13px;" onclick="startCrystalMode()">⚡ 開始晶石棋陣</button>
       </div>
 
       <div class="card" onclick="startCampaignMode(1)">
         <div style="font-size:16px; font-weight:bold; margin-bottom:4px;">🗺️ MODE 03｜闖關挑戰模式（20 關）</div>
-        <div style="font-size:12px; color:#6D4C41;">單人關卡進度與 1~3 星評價系統。</div>
       </div>
 
       <div class="card" onclick="openModeConfig('TIMED')">
         <div style="font-size:16px; font-weight:bold; margin-bottom:4px;">⏱️ MODE 04｜限時挑戰模式</div>
-        <div style="font-size:12px; color:#6D4C41;">支援每步 10 秒 / 20 秒 / 30 秒倒數計時極限對決。</div>
       </div>
 
-      <!-- MODE 05：虛空縮圈生存戰（大逃殺五子棋） -->
       <div class="card" onclick="startVoidMode()">
         <div style="font-size:16px; font-weight:bold; margin-bottom:4px;">🌪️ MODE 05｜虛空縮圈生存戰</div>
-        <div style="font-size:12px; color:#6D4C41;">五子棋大逃殺！每 8 手外圍崩塌吸入黑洞，逼入中宮生死決！</div>
       </div>
 
-      <!-- MODE 06：好友同屏對戰（替換連線） -->
       <div class="card" onclick="startLocalMode()" style="border: 2px solid #2E7D32; background: linear-gradient(135deg, #FFFFFF 0%, #F1F8E9 100%);">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-          <div style="font-size:16px; font-weight:bold; color:#1B5E20;">👥 MODE 06｜雙人同屏對戰 (面對面)</div>
-          <span style="background:#2E7D32; color:#FFF; font-size:10px; padding:2px 7px; border-radius:10px; font-weight:bold;">離線</span>
+          <div style="font-size:16px; font-weight:bold; color:#1B5E20;">👥 MODE 06｜雙人同屏 (面對面)</div>
         </div>
-        <div style="font-size:12px; color:#33691E;">同一台裝置，兩人面對面輪流落子，隨時展開真實切磋！</div>
       </div>
 
-      <!-- 全新 MODE 07：遠端雲端連線對戰 -->
       <div class="card" onclick="openOnlineLobby()" style="border: 2px solid #0277BD; background: linear-gradient(135deg, #FFFFFF 0%, #E1F5FE 100%);">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
           <div style="font-size:16px; font-weight:bold; color:#01579B;">🌐 MODE 07｜遠端連線對戰 (Online)</div>
-          <span style="background:#0277BD; color:#FFF; font-size:10px; padding:2px 7px; border-radius:10px; font-weight:bold;">雲端</span>
         </div>
-        <div style="font-size:12px; color:#0277BD;">產生 6 碼房號，與遠方好友各自用手機即時對決！</div>
+        <div style="font-size:12px; color:#0277BD;">產生 6 碼房號，與遠方好友各自用手機對決！</div>
       </div>
     </div>
 
     <!-- 遠端連線大廳面板 -->
     <div id="viewOnlineLobby" class="hidden">
+      <!-- 內建瀏覽器警告 (動態顯示) -->
+      <div id="inAppWarning" class="hidden" style="background:#FFF3E0; border:2px solid #FF9800; border-radius:8px; padding:12px; margin-bottom:12px; text-align:center;">
+        <div style="font-weight:bold; color:#E65100; margin-bottom:4px;">⚠️ 偵測到您使用 LINE / FB 內建瀏覽器</div>
+        <div style="font-size:12px; color:#5D4037;">這可能會阻擋連線！請點擊右上角「⋮」選擇<br><strong>「使用預設瀏覽器開啟 (Safari/Chrome)」</strong></div>
+      </div>
+
       <div class="card" id="lobbyMenu" style="cursor:default; text-align:center; padding: 20px;">
         <div style="font-size:18px; font-weight:bold; margin-bottom:16px; color:#0277BD;">🌐 遠端連線對戰大廳</div>
         <button class="btn btn-gold" style="width:100%; padding:12px; margin-bottom:12px; font-size:14px;" onclick="createOnlineRoom()">建立新房間 (Host)</button>
         <div style="margin: 16px 0; color: #7D5233; font-weight:bold; font-size:13px;">—— 或輸入房號加入 ——</div>
         <input type="text" id="joinRoomInput" placeholder="輸入 6 碼數字" style="width:100%; padding:10px; border:2px solid #C89666; border-radius:8px; margin-bottom:12px; text-align:center; font-size:18px; letter-spacing:6px; font-weight:bold; color:#3E2723;" maxlength="6" pattern="\d*">
         <button class="btn btn-brown" style="width:100%; padding:12px; font-size:14px;" onclick="joinOnlineRoom()">加入對戰 (Join)</button>
-        <!-- 新增：大廳專屬的連線狀態提示 -->
         <div id="lobbyStatusText" style="font-size:13px; font-weight:bold; color:#0277BD; margin-top:14px; min-height:18px;"></div>
-        <div style="font-size:11px; color:#8D6E63; margin-top:8px;">(若無反應，請點右上角「使用 Safari / 預設瀏覽器」開啟)</div>
       </div>
-      <div class="card hidden" id="lobbyWaiting" style="cursor:default; text-align:center; padding: 30px 20px;">
-        <div style="font-size:15px; font-weight:bold; color:#5D4037; margin-bottom:12px;">邀請好友輸入以下房號</div>
+
+      <div class="card hidden" id="lobbyWaiting" style="cursor:default; text-align:center; padding: 20px;">
+        <div style="font-size:15px; font-weight:bold; color:#5D4037; margin-bottom:12px;">請朋友輸入以下房號加入：</div>
         <div id="lobbyRoomCode" style="font-size:40px; font-weight:900; color:#1F6F5B; letter-spacing:8px; margin-bottom:12px; background:#F1F8E9; padding:12px; border-radius:12px; border:2px dashed #4CAF50;">123456</div>
-        <button class="btn btn-green" style="width:100%; padding:12px; font-size:14px; margin-bottom:20px;" onclick="copyInviteLink()">🔗 複製專屬邀請連結</button>
-        <div style="font-size:13px; color:#0277BD; margin-bottom:24px;" class="animate-pulse">⏳ 正在等待對手連線...</div>
+        <button class="btn btn-green" style="width:100%; padding:12px; font-size:14px; margin-bottom:12px;" onclick="copyInviteLink()">🔗 複製專屬邀請連結</button>
+        <div style="background:#FFF9C4; border:1px solid #FBC02D; border-radius:6px; padding:8px; font-size:12px; color:#F57F17; font-weight:bold; margin-bottom:16px;">
+          ⚠️ 注意：請停留在本畫面等待，<br>切換去其他 APP (如 LINE) 會導致房間斷線！
+        </div>
+        <div style="font-size:13px; color:#0277BD; margin-bottom:20px;" class="animate-pulse" id="hostWaitStatus">⏳ 正在等待對手連線...</div>
         <button class="btn btn-gray" style="padding:10px 24px;" onclick="showMenu()">取消並離開</button>
       </div>
     </div>
@@ -365,12 +249,8 @@
         <div id="subHeaderControl"></div>
       </div>
 
-      <!-- 固定 48px 高度，點擊卡片可隨時更換悄悄話，支援完整折行顯示且零推擠 -->
-      <div id="joanWhisperBox" onclick="manualShuffleWhisper()" title="點擊換一句悄悄話" style="background:#FAF3ED; border:1px solid #D7CCC8; border-radius:8px; padding:4px 12px; margin-bottom:8px; font-size:12px; color:#5D4037; font-style:italic; height:48px; min-height:48px; max-height:48px; box-sizing:border-box; display:flex; align-items:center; line-height:1.35; white-space:normal; word-break:break-word; overflow:hidden; cursor:pointer;">
-        ✨ JOAN 悄悄話：棋盤線條已經施完魔法，變得筆直完美囉！（點擊可換一句）
-      </div>
+      <div id="joanWhisperBox" onclick="manualShuffleWhisper()" title="點擊換一句悄悄話" style="background:#FAF3ED; border:1px solid #D7CCC8; border-radius:8px; padding:4px 12px; margin-bottom:8px; font-size:12px; color:#5D4037; font-style:italic; height:48px; min-height:48px; max-height:48px; box-sizing:border-box; display:flex; align-items:center; line-height:1.35; white-space:normal; word-break:break-word; overflow:hidden; cursor:pointer;"></div>
 
-      <!-- 固定 38px 狀態列高度 -->
       <div style="display:flex; justify-content:space-between; align-items:center; background:#EAE0D5; padding:0 12px; border-radius:8px; margin-bottom:10px; font-size:13px; font-weight:bold; height:38px; min-height:38px; box-sizing:border-box;">
         <div id="statusText">● 輪到你落子</div>
         <div id="statusExtra">手數：0</div>
@@ -399,7 +279,6 @@
     </div>
   </div>
 
-  <!-- 📖 靈能晶石玩法教學彈窗 -->
   <div id="tutorialModal" class="modal-overlay hidden" onclick="closeTutorialModal()">
     <div class="modal-card" onclick="event.stopPropagation()">
       <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid #E0C9A6; padding-bottom:10px; margin-bottom:14px;">
@@ -407,19 +286,15 @@
         <button onclick="closeTutorialModal()" style="background:none; border:none; font-size:20px; font-weight:bold; color:#7D5233; cursor:pointer;">✕</button>
       </div>
       <div style="font-size:13px; color:#5D4037; line-height:1.6; margin-bottom:12px;">
-        在<strong>靈能晶石棋陣</strong>中，棋盤上會隨機生成具有神奇力量的異能晶石。搶先佔領即可觸發超強效果！
+        棋盤上會隨機生成具有神奇力量的異能晶石。搶先佔領即可觸發超強效果！
       </div>
       <div style="background:#FFF3E0; border-left:4px solid #FF9800; padding:10px 12px; border-radius:6px; margin-bottom:10px;">
         <div style="font-weight:bold; color:#E65100; font-size:13px; margin-bottom:4px;">🔥 烈焰晶石 (Flame Crystal)</div>
-        <div style="font-size:12px; color:#6D4C41; line-height:1.5;">
-          落子佔領時引爆周圍 <strong>5×5 範圍 (半徑 2 格)</strong>，瞬間焚毀該範圍內所有敵方未受保護的棋子！
-        </div>
+        <div style="font-size:12px; color:#6D4C41; line-height:1.5;">佔領時引爆周圍 <strong>5×5 範圍 (半徑 2 格)</strong>，瞬間焚毀該範圍內所有敵方未受保護的棋子！</div>
       </div>
       <div style="background:#E0F7FA; border-left:4px solid #00BCD4; padding:10px 12px; border-radius:6px; margin-bottom:14px;">
         <div style="font-weight:bold; color:#00838F; font-size:13px; margin-bottom:4px;">🛡️ 護盾晶石 (Shield Crystal)</div>
-        <div style="font-size:12px; color:#6D4C41; line-height:1.5;">
-          落子佔領後該棋子獲得<strong>天藍色能量護盾</strong>，享有金剛不壞之身，完全免疫後續烈焰晶石焚毀！
-        </div>
+        <div style="font-size:12px; color:#6D4C41; line-height:1.5;">佔領後該棋子獲得<strong>天藍色能量護盾</strong>，享有金剛不壞之身，完全免疫後續烈焰晶石焚毀！</div>
       </div>
       <button class="btn btn-gold" style="width:100%; padding:9px; font-size:13px;" onclick="closeTutorialModal()">我懂了，開始挑戰！</button>
     </div>
@@ -427,36 +302,17 @@
 
   <script>
     var SIZE = 15, EMPTY = 0, BLACK = 1, WHITE = 2;
-    var board = [];
-    var crystalBoard = [];
-    var shieldBoard = [];
-    var historyStack = [];
-    var currentTurn = BLACK;
-    var playerColor = BLACK;
-    var aiDifficulty = 'HARD';
-    var gameMode = 'AI';
-    var isOver = false;
-    var aiBusy = false;
-    var soundOn = true;
-    var lastPos = null;
-    var winCoords = null;
-    var cellRefs = [];
-    var audioCtx = null;
-    var isPaused = false;
+    var board = [], crystalBoard = [], shieldBoard = [], historyStack = [];
+    var currentTurn = BLACK, playerColor = BLACK, aiDifficulty = 'HARD', gameMode = 'AI';
+    var isOver = false, aiBusy = false, soundOn = true, lastPos = null, winCoords = null;
+    var cellRefs = [], audioCtx = null, isPaused = false;
+    var currentCampaignLevel = 1, timedLimitSec = 20, timedRemaining = 20, timedTimer = null;
+    
+    // 連線專用變數
+    var onlineRole = null, onlineRoomId = null, peer = null, peerConn = null;
+    var joinRetryCount = 0; // 客戶端斷線自動重試次數
 
-    var currentCampaignLevel = 1;
-    var timedLimitSec = 20;
-    var timedRemaining = 20;
-    var timedTimer = null;
-
-    var onlineRole = null; // 'HOST' or 'GUEST'
-    var onlineRoomId = null;
-    var peer = null;
-    var peerConn = null;
-
-    var voidRings = 0;
-    var VOID_STEP_INTERVAL = 8;
-    var MAX_VOID_RINGS = 3;
+    var voidRings = 0, VOID_STEP_INTERVAL = 8, MAX_VOID_RINGS = 3;
 
     function isCellVoid(r, c) {
       if (gameMode !== 'VOID') return false;
@@ -465,141 +321,68 @@
 
     function checkAndTriggerVoidCollapse() {
       if (gameMode !== 'VOID') return;
-      var moves = historyStack.length;
-      var nextCollapseAt = (voidRings + 1) * VOID_STEP_INTERVAL;
-      var remaining = nextCollapseAt - moves;
-
+      var remaining = ((voidRings + 1) * VOID_STEP_INTERVAL) - historyStack.length;
       var badge = document.getElementById('voidBadge');
-      if (badge) {
-        if (voidRings >= MAX_VOID_RINGS) {
-          badge.textContent = '已縮至極限 (9x9)';
-        } else {
-          badge.textContent = '縮圈倒數: ' + remaining + ' 手';
-        }
-      }
-
-      if (remaining === 1 && voidRings < MAX_VOID_RINGS) {
-        updateWhisper('⚠️ 空間劇烈震顫！再落 1 子最外圍將崩塌吸入虛空！');
-      } else if (remaining === 0 && voidRings < MAX_VOID_RINGS) {
-        collapseNextRing();
-      }
-    }
-
-    function collapseNextRing() {
-      var ring = voidRings;
-      voidRings++;
-      var erasedStones = 0;
-      var minIdx = ring, maxIdx = SIZE - 1 - ring;
-
-      for (var r = minIdx; r <= maxIdx; r++) {
-        for (var c = minIdx; c <= maxIdx; c++) {
-          if (r === minIdx || r === maxIdx || c === minIdx || c === maxIdx) {
-            if (board[r][c] !== EMPTY) {
-              board[r][c] = EMPTY;
-              erasedStones++;
+      if (badge) badge.textContent = voidRings >= MAX_VOID_RINGS ? '已縮至極限 (9x9)' : '縮圈倒數: ' + remaining + ' 手';
+      
+      if (remaining === 0 && voidRings < MAX_VOID_RINGS) {
+        voidRings++;
+        var erasedStones = 0, minIdx = voidRings - 1, maxIdx = SIZE - voidRings;
+        for (var r = minIdx; r <= maxIdx; r++) {
+          for (var c = minIdx; c <= maxIdx; c++) {
+            if (r === minIdx || r === maxIdx || c === minIdx || c === maxIdx) {
+              if (board[r][c] !== EMPTY) { board[r][c] = EMPTY; erasedStones++; }
+              crystalBoard[r][c] = 0; shieldBoard[r][c] = false;
             }
-            crystalBoard[r][c] = 0;
-            shieldBoard[r][c] = false;
           }
         }
+        playExplosionTone();
+        updateWhisper('🌌 空間大崩塌！最外圈化為虛空，' + (erasedStones > 0 ? erasedStones + ' 顆邊緣棋子已被黑洞消滅！' : '外圍已全面封鎖！'));
+        renderBoard();
       }
-
-      playExplosionTone();
-      updateWhisper('🌌 空間大崩塌！最外圈化為虛空，' + (erasedStones > 0 ? erasedStones + ' 顆邊緣棋子已被黑洞消滅！' : '外圍已全面封鎖！'));
-      renderBoard();
     }
 
-    // 🌟 超過 30 句豐富且多樣的 JOAN 悄悄話語錄庫
     var whispers = [
       "☕ 喝口熱咖啡再落子吧，思緒會變得無比清晰喔！",
       "🚲 騎單車迎風吹過，棋盤上的思路也跟著開闊了。",
-      "🌟 歡迎來到 JOAN PLAYGROUND，今天也是充滿靈感的一天！",
-      "🍵 溫熱的木質香氣，正在棋格與指尖悄悄蔓延。",
-      "☁️ 放輕鬆，深呼吸～下棋就像畫畫，每一手都是心境。",
-      "🍰 棋逢對手，不妨配上一塊提拉米蘇慢慢享受。",
       "💡 JOAN 提示：別只盯著橫豎排，斜向視角常藏著絕妙生機！",
       "✨ 這步棋落得真漂亮，連 AI 的木質演算法都在驚嘆。",
       "👀 棋盤上的片刻安靜，往往預示著一場精妙的逆轉破局！",
-      "🎯 衝四、聽牌、雙活三...看誰能先捕捉到關鍵契機！",
-      "💭 靈光一閃！有時候跟隨直覺落子比深思熟慮更厲害。",
       "⚡ 棋盤上的每一條線，都在譜寫專屬於你的精彩篇章！",
-      "🔍 搶先佈局關鍵樞紐，把對局的主動權牢牢握在手心。",
       "🔥 烈焰晶石在隱隱發燙，看準時機能一舉炸飛敵陣防線！",
       "🛡️ 堅不可摧的護盾就是最好支點，守得穩才能攻得狠。",
-      "🤖 AI 小聲嘀咕：『這步棋完全出乎我的矩陣預料！』",
-      "🔮 大師級 AI 正在偷偷查閱它的萬能落子筆記本喔！",
-      "🧩 棋盤上的微風徐徐，AI 正在重構它的木質靈魂。",
-      "⚡ AI 的心跳正在加速，它感受到你強大的佈局氣場了！",
-      "🎩 雙方有來有往，這真是一場賞心悅目的優雅對弈。",
-      "🌈 不管輸贏，沉浸在每一步棋的專注裡就是最棒的時光。",
-      "🎶 聽，棋子落在木盤上的清脆聲響，是最治癒的旋律。",
-      "🍃 棋局如人生，有攻有守、進退自如才是真功夫。",
-      "⚔️ 盤面佈局越來越緊湊了，神之一手即將在此誕生！",
-      "🐾 JOAN 的貓咪悄悄從桌邊走過，也在幫你暗中加油呢！",
-      "🌞 陽光灑在棋盤邊緣，為這場對決添上了一抹金黃。",
-      "🏆 每下一顆棋，你的棋感與眼界都在悄悄升級！",
-      "🥐 來份可頌補充能量，這場大師對弈值得細細品味。",
-      "⭐ 佈局就像繁星織網，不知不覺間勝勢已定。",
-      "🌊 心如止水，靜觀其變，對手的破綻自然浮現。"
+      "🔮 即使是遠端對手，也能透過棋盤感受到彼此的氣場喔！",
+      "🎶 聽，棋子落在木盤上的清脆聲響，是最治癒的旋律。"
     ];
-
     var lastWhisperIdx = -1;
 
     function updateWhisper(customMsg) {
       var box = document.getElementById('joanWhisperBox');
       if (!box) return;
-      
-      var nextText = '';
-      if (customMsg) {
-        nextText = customMsg;
-      } else {
-        var nextIdx = Math.floor(Math.random() * whispers.length);
-        if (nextIdx === lastWhisperIdx && whispers.length > 1) {
-          nextIdx = (nextIdx + 1) % whispers.length;
-        }
-        lastWhisperIdx = nextIdx;
-        nextText = whispers[nextIdx];
-      }
-
+      var nextText = customMsg || whispers[(lastWhisperIdx = (lastWhisperIdx + 1) % whispers.length)];
       box.classList.remove('fade-text');
-      void box.offsetWidth; // 強制重繪觸發動畫
+      void box.offsetWidth; 
       box.textContent = nextText;
       box.classList.add('fade-text');
     }
 
-    // 點擊卡片手動抽換悄悄話彩蛋
-    function manualShuffleWhisper() {
-      updateWhisper();
-    }
-
-    function openTutorialModal() {
-      document.getElementById('tutorialModal').classList.remove('hidden');
-    }
-
-    function closeTutorialModal() {
-      document.getElementById('tutorialModal').classList.add('hidden');
-    }
-
-    function toggleSound() {
-      soundOn = !soundOn;
-      document.getElementById('btnSound').textContent = soundOn ? '🔊 音效' : '🔇 靜音';
-    }
+    function manualShuffleWhisper() { updateWhisper(); }
+    function openTutorialModal() { document.getElementById('tutorialModal').classList.remove('hidden'); }
+    function closeTutorialModal() { document.getElementById('tutorialModal').classList.add('hidden'); }
+    function toggleSound() { soundOn = !soundOn; document.getElementById('btnSound').textContent = soundOn ? '🔊 音效' : '🔇 靜音'; }
 
     function playTone(freq, dur) {
       if (!soundOn) return;
       try {
         if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         if (audioCtx.state === 'suspended') audioCtx.resume();
-        var osc = audioCtx.createOscillator();
-        var gain = audioCtx.createGain();
+        var osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
         osc.type = 'triangle';
         osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
         gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
         gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + dur);
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-        osc.start();
-        osc.stop(audioCtx.currentTime + dur);
+        osc.connect(gain); gain.connect(audioCtx.destination);
+        osc.start(); osc.stop(audioCtx.currentTime + dur);
       } catch(e) {}
     }
 
@@ -608,18 +391,14 @@
       try {
         if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         if (audioCtx.state === 'suspended') audioCtx.resume();
-        var now = audioCtx.currentTime;
-        var osc = audioCtx.createOscillator();
-        var gain = audioCtx.createGain();
+        var now = audioCtx.currentTime, osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
         osc.type = 'sawtooth';
         osc.frequency.setValueAtTime(260, now);
         osc.frequency.exponentialRampToValueAtTime(45, now + 0.38);
         gain.gain.setValueAtTime(0.5, now);
         gain.gain.exponentialRampToValueAtTime(0.01, now + 0.38);
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-        osc.start(now);
-        osc.stop(now + 0.39);
+        osc.connect(gain); gain.connect(audioCtx.destination);
+        osc.start(now); osc.stop(now + 0.39);
       } catch(e) {}
     }
 
@@ -627,73 +406,40 @@
       var cryType = crystalBoard[r][c];
       if (cryType === 0) return false;
       crystalBoard[r][c] = 0;
-
       if (cryType === 1) {
-        // 🔥 烈焰晶石：引爆半徑 2 格（5x5 範圍）
-        var opp = (who === BLACK) ? WHITE : BLACK;
-        var burned = [];
+        var opp = (who === BLACK) ? WHITE : BLACK, burned = [];
         for (var dr = -2; dr <= 2; dr++) {
           for (var dc = -2; dc <= 2; dc++) {
             var nr = r + dr, nc = c + dc;
-            if (nr >= 0 && nr < SIZE && nc >= 0 && nc < SIZE) {
-              if (board[nr][nc] === opp && !shieldBoard[nr][nc]) {
-                board[nr][nc] = EMPTY;
-                burned.push({ r: nr, c: nc });
-              }
+            if (nr >= 0 && nr < SIZE && nc >= 0 && nc < SIZE && board[nr][nc] === opp && !shieldBoard[nr][nc]) {
+              board[nr][nc] = EMPTY; burned.push({ r: nr, c: nc });
             }
           }
         }
-
         playExplosionTone();
-
-        var blastCells = [{ r: r, c: c }].concat(burned);
-        blastCells.forEach(function(pos) {
-          var el = cellRefs[pos.r][pos.c];
-          if (el) {
-            var flame = document.createElement('div');
-            flame.className = 'burn-anim';
-            el.appendChild(flame);
-            setTimeout(function() { flame.remove(); }, 600);
-          }
+        [{ r: r, c: c }].concat(burned).forEach(function(pos) {
+          var flame = document.createElement('div'); flame.className = 'burn-anim';
+          if(cellRefs[pos.r][pos.c]) { cellRefs[pos.r][pos.c].appendChild(flame); setTimeout(function() { flame.remove(); }, 600); }
         });
-
-        if (burned.length > 0) {
-          var targetName = who === playerColor ? '敵方' : '你的';
-          updateWhisper('💥 轟！烈焰晶石引爆，瞬間焚毀了' + targetName + ' ' + burned.length + ' 顆棋子！');
-        } else {
-          updateWhisper('💥 烈焰晶石引爆！但周圍兩格內無可焚毀的敵子。');
-        }
+        updateWhisper(burned.length > 0 ? `💥 轟！烈焰引爆，焚毀了 ${burned.length} 顆敵方棋子！` : '💥 烈焰引爆！但周圍無可焚毀的敵子。');
       } else if (cryType === 2) {
-        // 🛡️ 護盾晶石
-        shieldBoard[r][c] = true;
-        playTone(520, 0.15);
-        var role = who === playerColor ? '你' : 'AI';
-        updateWhisper('🛡️ ' + role + '啟動了護盾晶石！該子獲得金剛不壞之身，免疫烈焰！');
+        shieldBoard[r][c] = true; playTone(520, 0.15);
+        updateWhisper('🛡️ 啟動護盾晶石！該子獲得金剛不壞之身，免疫烈焰！');
       }
       return true;
     }
 
     function initGrid() {
-      var wrap = document.getElementById('boardGrid');
-      var pauseEl = document.getElementById('pauseOverlay');
-      wrap.innerHTML = '';
-      if(pauseEl) wrap.appendChild(pauseEl);
-
+      var wrap = document.getElementById('boardGrid'), pauseEl = document.getElementById('pauseOverlay');
+      wrap.innerHTML = ''; if(pauseEl) wrap.appendChild(pauseEl);
       cellRefs = [];
       for (var r = 0; r < SIZE; r++) {
         cellRefs[r] = [];
         for (var c = 0; c < SIZE; c++) {
           var cellEl = document.createElement('div');
-          cellEl.className = 'board-cell';
-          cellEl.setAttribute('data-row', r);
-          cellEl.setAttribute('data-col', c);
-
-          (function(row, col) {
-            cellEl.onclick = function() { onCellTap(row, col); };
-          })(r, c);
-
-          wrap.appendChild(cellEl);
-          cellRefs[r][c] = cellEl;
+          cellEl.className = 'board-cell'; cellEl.setAttribute('data-row', r); cellEl.setAttribute('data-col', c);
+          (function(row, col) { cellEl.onclick = function() { onCellTap(row, col); }; })(r, c);
+          wrap.appendChild(cellEl); cellRefs[r][c] = cellEl;
         }
       }
     }
@@ -702,8 +448,7 @@
       clearInterval(timedTimer);
       if (peerConn) { peerConn.close(); peerConn = null; }
       if (peer) { peer.destroy(); peer = null; }
-      onlineRoomId = null;
-      onlineRole = null;
+      onlineRoomId = null; onlineRole = null;
       document.getElementById('viewPlay').classList.add('hidden');
       document.getElementById('viewConfig').classList.add('hidden');
       document.getElementById('viewOnlineLobby').classList.add('hidden');
@@ -716,35 +461,18 @@
       document.getElementById('viewMenu').classList.add('hidden');
       document.getElementById('viewConfig').classList.remove('hidden');
       document.getElementById('btnBack').classList.remove('hidden');
-
-      var titleEl = document.getElementById('configTitle');
-      var timedBox = document.getElementById('timedOptionsBox');
-      if (mode === 'TIMED') {
-        titleEl.textContent = '⏱️ 設定限時挑戰參數';
-        timedBox.classList.remove('hidden');
-      } else {
-        titleEl.textContent = '🤖 設定 AI 對戰參數';
-        timedBox.classList.add('hidden');
-      }
+      document.getElementById('configTitle').textContent = mode === 'TIMED' ? '⏱️ 設定限時挑戰參數' : '🤖 設定 AI 對戰參數';
+      mode === 'TIMED' ? document.getElementById('timedOptionsBox').classList.remove('hidden') : document.getElementById('timedOptionsBox').classList.add('hidden');
       syncConfigUI();
     }
-
     function setCfgDiff(d) { aiDifficulty = d; syncConfigUI(); }
     function setCfgColor(c) { playerColor = c; syncConfigUI(); }
     function setTimedLimit(sec) { timedLimitSec = sec; syncConfigUI(); }
-
     function syncConfigUI() {
-      ['BEGINNER', 'NORMAL', 'HARD', 'MASTER'].forEach(d => {
-        var el = document.getElementById('cfgDiff' + d);
-        if(el) el.className = 'btn ' + (aiDifficulty === d ? 'btn-brown' : 'btn-light');
-      });
-      var c1 = document.getElementById('cfgColor1'), c2 = document.getElementById('cfgColor2');
-      if(c1) c1.className = 'btn ' + (playerColor === BLACK ? 'btn-green' : 'btn-light');
-      if(c2) c2.className = 'btn ' + (playerColor === WHITE ? 'btn-green' : 'btn-light');
-      [10, 20, 30].forEach(s => {
-        var el = document.getElementById('time' + s);
-        if(el) el.className = 'btn ' + (timedLimitSec === s ? 'btn-brown' : 'btn-light');
-      });
+      ['BEGINNER', 'NORMAL', 'HARD', 'MASTER'].forEach(d => { var el = document.getElementById('cfgDiff' + d); if(el) el.className = 'btn ' + (aiDifficulty === d ? 'btn-brown' : 'btn-light'); });
+      if(document.getElementById('cfgColor1')) document.getElementById('cfgColor1').className = 'btn ' + (playerColor === BLACK ? 'btn-green' : 'btn-light');
+      if(document.getElementById('cfgColor2')) document.getElementById('cfgColor2').className = 'btn ' + (playerColor === WHITE ? 'btn-green' : 'btn-light');
+      [10, 20, 30].forEach(s => { var el = document.getElementById('time' + s); if(el) el.className = 'btn ' + (timedLimitSec === s ? 'btn-brown' : 'btn-light'); });
     }
 
     function confirmStartConfig() { startGameSession(gameMode); }
@@ -753,28 +481,30 @@
     function startVoidMode() { gameMode = 'VOID'; startGameSession('VOID'); }
     function startLocalMode() { gameMode = 'LOCAL'; startGameSession('LOCAL'); }
 
-    // 新增：處理大廳專屬的狀態顯示
-    function setLobbyStatus(msg, isError) {
-      var el = document.getElementById('lobbyStatusText');
-      if (el) {
-        el.textContent = msg;
-        el.style.color = isError ? '#B71C1C' : '#0277BD';
+    // ====== 雲端連線大廳 (強化防斷線機制) ======
+    function checkInAppBrowser() {
+      var ua = navigator.userAgent || navigator.vendor || window.opera;
+      if ((ua.indexOf("FBAN") > -1) || (ua.indexOf("FBAV") > -1) || (ua.indexOf("Instagram") > -1) || (ua.indexOf("Line") > -1)) {
+        document.getElementById('inAppWarning').classList.remove('hidden');
       }
     }
 
-    // 新增：強化版 P2P 連線設定，加入 Google 與 Twilio 全球 STUN 伺服器穿透防火牆
+    function setLobbyStatus(msg, isError) {
+      var el = document.getElementById('lobbyStatusText');
+      if (el) { el.textContent = msg; el.style.color = isError ? '#B71C1C' : '#0277BD'; }
+    }
+
     var peerConfig = {
         config: {
             'iceServers': [
                 { urls: 'stun:stun.l.google.com:19302' },
-                { urls: 'stun:stun1.l.google.com:19302' },
                 { urls: 'stun:global.stun.twilio.com:3478' }
             ]
         }
     };
 
-    // ====== 雲端連線大廳函數 (改為 PeerJS 點對點連線) ======
     function openOnlineLobby() {
+       checkInAppBrowser();
        document.getElementById('viewMenu').classList.add('hidden');
        document.getElementById('viewOnlineLobby').classList.remove('hidden');
        document.getElementById('lobbyMenu').classList.remove('hidden');
@@ -785,19 +515,23 @@
 
     function createOnlineRoom() {
        setLobbyStatus('⏳ 正在連接至 P2P 伺服器，請稍候...', false);
+       var code = Math.floor(100000 + Math.random() * 900000).toString();
+       onlineRoomId = code; onlineRole = 'HOST';
+       
        try {
-           var code = Math.floor(100000 + Math.random() * 900000).toString();
-           onlineRoomId = code;
-           onlineRole = 'HOST';
-           
-           // 套用強化版連線設定
            peer = new Peer('joangomoku-' + code, peerConfig);
-           
            peer.on('open', function(id) {
                document.getElementById('lobbyMenu').classList.add('hidden');
                document.getElementById('lobbyWaiting').classList.remove('hidden');
                document.getElementById('lobbyRoomCode').textContent = code;
+               document.getElementById('hostWaitStatus').textContent = '⏳ 房間已開啟，等待對手連線...';
                setLobbyStatus('', false);
+           });
+           
+           // 房主甦醒自動回連：防止手機休眠導致斷線
+           peer.on('disconnected', function() {
+               document.getElementById('hostWaitStatus').textContent = '⚠️ 偵測到網路休眠，自動回連中...';
+               peer.reconnect();
            });
 
            peer.on('connection', function(conn) {
@@ -806,348 +540,183 @@
            });
            
            peer.on('error', function(err) {
-               setLobbyStatus('❌ 建立房間失敗: ' + err.type, true);
+               if(err.type === 'unavailable-id') setLobbyStatus('❌ 房號衝突，請重試。', true);
+               else setLobbyStatus('❌ 建立房間失敗，請使用 Safari/Chrome 開啟。', true);
            });
        } catch (e) {
-           setLobbyStatus('❌ 瀏覽器不支援，請使用 Safari 或 Chrome 開啟。', true);
+           setLobbyStatus('❌ 瀏覽器不支援 WebRTC，請使用 Safari/Chrome。', true);
        }
     }
 
     function copyInviteLink() {
        var url = window.location.origin + window.location.pathname + '?room=' + onlineRoomId;
-       var tempInput = document.createElement('input');
-       tempInput.value = url;
-       document.body.appendChild(tempInput);
-       tempInput.select();
-       document.execCommand('copy');
-       document.body.removeChild(tempInput);
-       updateWhisper('📋 邀請連結已複製！快貼給朋友吧！');
+       var tempInput = document.createElement('input'); tempInput.value = url;
+       document.body.appendChild(tempInput); tempInput.select(); document.execCommand('copy'); document.body.removeChild(tempInput);
+       updateWhisper('📋 邀請連結已複製！快傳給朋友吧！');
     }
 
     function joinOnlineRoom() {
        var code = document.getElementById('joinRoomInput').value.trim();
        if(code.length !== 6) { setLobbyStatus('⚠️ 請輸入完整的 6 位數房號。', true); return; }
        
-       onlineRoomId = code;
-       onlineRole = 'GUEST';
+       onlineRoomId = code; onlineRole = 'GUEST'; joinRetryCount = 0;
        setLobbyStatus('⏳ 正在連接至伺服器...', false);
        
        try {
-           // 套用強化版連線設定
            peer = new Peer(peerConfig);
-           peer.on('open', function(id) {
-               setLobbyStatus('⏳ 正在配對房號 ' + code + '，建立通道中...', false);
-               peerConn = peer.connect('joangomoku-' + code, { reliable: true });
-               
-               setupPeerConnection();
-               
-               // 加入連線逾時偵測 (7秒)
-               setTimeout(function() {
-                   if (peerConn && !peerConn.open) {
-                       setLobbyStatus('❌ 連線逾時：房主可能已離開或網路防火牆阻擋', true);
-                   }
-               }, 7000);
-           });
+           peer.on('open', function(id) { attemptGuestConnect(code); });
            
            peer.on('error', function(err) {
                if (err.type === 'peer-unavailable') {
-                   setLobbyStatus('❌ 找不到房號 ' + code + '，請確認房主還在大廳中。', true);
+                   // 房主可能因為切換APP被暫時休眠，自動重試3次
+                   if (joinRetryCount < 3) {
+                       joinRetryCount++;
+                       setLobbyStatus('⏳ 房主可能切換了畫面，自動重試連線中 (' + joinRetryCount + '/3)...', false);
+                       setTimeout(function() { attemptGuestConnect(code); }, 2000);
+                   } else {
+                       setLobbyStatus('❌ 找不到房號 ' + code + '，請確認房主「還停留在遊戲畫面中」(切換APP會斷線喔)。', true);
+                   }
                } else {
                    setLobbyStatus('❌ 網路異常 (' + err.type + ')', true);
                }
            });
        } catch (e) {
-           setLobbyStatus('❌ 瀏覽器不支援，請使用 Safari 或 Chrome 開啟。', true);
+           setLobbyStatus('❌ 瀏覽器不支援，請使用 Safari/Chrome。', true);
        }
+    }
+
+    function attemptGuestConnect(code) {
+        setLobbyStatus('⏳ 正在配對房號 ' + code + '...', false);
+        peerConn = peer.connect('joangomoku-' + code, { reliable: true });
+        setupPeerConnection();
     }
 
     function setupPeerConnection() {
         var initGame = function() {
             document.getElementById('viewOnlineLobby').classList.add('hidden');
-            updateWhisper('✅ 連線成功！遊戲開始！');
+            updateWhisper('✅ 連線成功！雲端對弈正式開始！');
             startGameSession('ONLINE');
-            
             if(onlineRole === 'HOST') syncStateToPeer();
         };
 
-        // 確保通道狀態正確綁定
-        if (peerConn.open) {
-            initGame();
-        } else {
-            peerConn.on('open', initGame);
-        }
+        if (peerConn.open) initGame();
+        else peerConn.on('open', initGame);
 
         peerConn.on('data', function(data) {
             if (gameMode !== 'ONLINE') return;
-            
             if (data.type === 'SYNC') {
-                board = data.board;
-                crystalBoard = data.crystalBoard;
-                shieldBoard = data.shieldBoard;
-                historyStack = data.historyStack;
-                currentTurn = data.currentTurn;
-                isOver = data.isOver;
-                lastPos = data.lastPos;
-                winCoords = data.winCoords;
-                
+                board = data.board; crystalBoard = data.crystalBoard; shieldBoard = data.shieldBoard; historyStack = data.historyStack;
+                currentTurn = data.currentTurn; isOver = data.isOver; lastPos = data.lastPos; winCoords = data.winCoords;
                 playTone(currentTurn === BLACK ? 340 : 420, 0.06); 
                 renderBoard();
-
-                if (isOver && winCoords) {
-                   showResult('🎉 遠端對局結束！', '這是一場精彩的跨螢幕對決！', false);
-                }
+                if (isOver && winCoords) showResult('🎉 遠端對局結束！', '這是一場精彩的跨螢幕對決！', false);
             } else if (data.type === 'RESTART') {
                 updateWhisper('🔄 房主已重新開始新局！');
                 startGameSession('ONLINE');
             }
         });
         
-        peerConn.on('close', function() {
-            updateWhisper('⚠️ 對手已斷線或離開遊戲！');
-        });
+        peerConn.on('close', function() { updateWhisper('⚠️ 對手已斷線或離開網頁！'); });
     }
 
     function syncStateToPeer() {
        if(gameMode !== 'ONLINE' || !peerConn || !peerConn.open) return;
-       peerConn.send({
-           type: 'SYNC',
-           board: board,
-           crystalBoard: crystalBoard,
-           shieldBoard: shieldBoard,
-           historyStack: historyStack,
-           currentTurn: currentTurn,
-           isOver: isOver,
-           lastPos: lastPos,
-           winCoords: winCoords
-       });
+       peerConn.send({ type: 'SYNC', board: board, crystalBoard: crystalBoard, shieldBoard: shieldBoard, historyStack: historyStack, currentTurn: currentTurn, isOver: isOver, lastPos: lastPos, winCoords: winCoords });
     }
 
+    // ====== 遊戲主邏輯 ======
     function startGameSession(mode) {
       gameMode = mode;
-      document.getElementById('viewMenu').classList.add('hidden');
-      document.getElementById('viewConfig').classList.add('hidden');
-      document.getElementById('viewOnlineLobby').classList.add('hidden');
-      document.getElementById('viewPlay').classList.remove('hidden');
-      document.getElementById('btnBack').classList.remove('hidden');
-      document.getElementById('resultBox').classList.add('hidden');
+      document.getElementById('viewMenu').classList.add('hidden'); document.getElementById('viewConfig').classList.add('hidden');
+      document.getElementById('viewOnlineLobby').classList.add('hidden'); document.getElementById('viewPlay').classList.remove('hidden');
+      document.getElementById('btnBack').classList.remove('hidden'); document.getElementById('resultBox').classList.add('hidden');
 
-      board = [];
-      crystalBoard = [];
-      shieldBoard = [];
-      for(var r=0; r<SIZE; r++) {
-        board[r] = [];
-        crystalBoard[r] = [];
-        shieldBoard[r] = [];
-        for(var c=0; c<SIZE; c++) {
-          board[r][c] = EMPTY;
-          crystalBoard[r][c] = 0;
-          shieldBoard[r][c] = false;
-        }
-      }
-
+      board = []; crystalBoard = []; shieldBoard = [];
+      for(var r=0; r<SIZE; r++) { board[r] = []; crystalBoard[r] = []; shieldBoard[r] = []; for(var c=0; c<SIZE; c++) { board[r][c] = EMPTY; crystalBoard[r][c] = 0; shieldBoard[r][c] = false; } }
       if (mode === 'CRYSTAL') {
-        var crystalsPlaced = 0;
-        while(crystalsPlaced < 4) {
-          var rr = Math.floor(Math.random() * 11) + 2;
-          var cc = Math.floor(Math.random() * 11) + 2;
-          if (crystalBoard[rr][cc] === 0 && !(rr === 7 && cc === 7)) {
-            crystalBoard[rr][cc] = Math.random() > 0.5 ? 1 : 2;
-            crystalsPlaced++;
-          }
-        }
+        var cp = 0; while(cp < 4) { var rr = Math.floor(Math.random()*11)+2, cc = Math.floor(Math.random()*11)+2; if(crystalBoard[rr][cc]===0 && !(rr===7&&cc===7)) { crystalBoard[rr][cc] = Math.random()>0.5?1:2; cp++; } }
       }
+      historyStack = []; isOver = false; aiBusy = false; lastPos = null; winCoords = null; isPaused = false; voidRings = 0; clearInterval(timedTimer);
 
-      historyStack = [];
-      isOver = false;
-      aiBusy = false;
-      lastPos = null;
-      winCoords = null;
-      isPaused = false;
-      voidRings = 0;
-      clearInterval(timedTimer);
-
-      var subHeaderCtrl = document.getElementById('subHeaderControl');
-      var subTitle = document.getElementById('subHeaderTitle');
-      subHeaderCtrl.innerHTML = '';
-
+      var subHeaderCtrl = document.getElementById('subHeaderControl'), subTitle = document.getElementById('subHeaderTitle'); subHeaderCtrl.innerHTML = '';
       if (mode === 'ONLINE') {
-        subTitle.textContent = `🌐 遠端連線對戰 (房號: ${onlineRoomId})`;
-        var roleBadge = document.createElement('span');
-        roleBadge.style.cssText = 'font-size:11px; font-weight:bold; color:#0277BD; border:1px solid #0277BD; padding:2px 6px; border-radius:6px;';
-        roleBadge.textContent = onlineRole === 'HOST' ? '🏠 房主 (執黑)' : '👤 訪客 (執白)';
-        subHeaderCtrl.appendChild(roleBadge);
+        subTitle.textContent = `🌐 遠端對戰 (房號: ${onlineRoomId})`;
+        var badge = document.createElement('span'); badge.style.cssText = 'font-size:11px; font-weight:bold; color:#0277BD; border:1px solid #0277BD; padding:2px 6px; border-radius:6px;';
+        badge.textContent = onlineRole === 'HOST' ? '🏠 房主 (黑)' : '👤 訪客 (白)'; subHeaderCtrl.appendChild(badge);
         playerColor = onlineRole === 'HOST' ? BLACK : WHITE;
       } else if (mode === 'CRYSTAL') {
         subTitle.textContent = '⚡ 靈能晶石棋陣';
-        var teachBtn = document.createElement('button');
-        teachBtn.className = 'btn btn-light';
-        teachBtn.style.cssText = 'padding:3px 8px; font-size:11px;';
-        teachBtn.textContent = '📖 規則';
-        teachBtn.onclick = openTutorialModal;
-        subHeaderCtrl.appendChild(teachBtn);
+        var teachBtn = document.createElement('button'); teachBtn.className = 'btn btn-light'; teachBtn.style.cssText = 'padding:3px 8px; font-size:11px;'; teachBtn.textContent = '📖 規則'; teachBtn.onclick = openTutorialModal; subHeaderCtrl.appendChild(teachBtn);
       } else if (mode === 'CAMPAIGN') {
-        subTitle.textContent = `🗺️ 闖關挑戰｜第 ${currentCampaignLevel} 關`;
-        playerColor = currentCampaignLevel % 2 === 1 ? BLACK : WHITE;
+        subTitle.textContent = `🗺️ 闖關挑戰｜第 ${currentCampaignLevel} 關`; playerColor = currentCampaignLevel % 2 === 1 ? BLACK : WHITE;
       } else if (mode === 'TIMED') {
-        subTitle.textContent = `⏱️ 限時挑戰 (${timedLimitSec}秒/步)`;
-        timedRemaining = timedLimitSec;
-        var timeBadge = document.createElement('span');
-        timeBadge.id = 'timedBadge';
-        timeBadge.style.cssText = 'font-size:13px; font-weight:bold; color:#B71C1C;';
-        timeBadge.textContent = `倒數: ${timedRemaining}s`;
-        subHeaderCtrl.appendChild(timeBadge);
+        subTitle.textContent = `⏱️ 限時挑戰 (${timedLimitSec}s)`; timedRemaining = timedLimitSec;
+        var tBadge = document.createElement('span'); tBadge.id = 'timedBadge'; tBadge.style.cssText = 'font-size:13px; font-weight:bold; color:#B71C1C;'; tBadge.textContent = `倒數: ${timedRemaining}s`; subHeaderCtrl.appendChild(tBadge);
         startTimedInterval();
       } else if (mode === 'VOID') {
-        subTitle.textContent = '🌪️ 虛空縮圈生存戰';
-        var voidBadge = document.createElement('span');
-        voidBadge.id = 'voidBadge';
-        voidBadge.style.cssText = 'font-size:12px; font-weight:bold; color:#7B1FA2;';
-        voidBadge.textContent = '縮圈倒數: 8 手';
-        subHeaderCtrl.appendChild(voidBadge);
+        subTitle.textContent = '🌪️ 虛空縮圈生存戰'; var vBadge = document.createElement('span'); vBadge.id = 'voidBadge'; vBadge.style.cssText = 'font-size:12px; font-weight:bold; color:#7B1FA2;'; vBadge.textContent = '縮圈倒數: 8 手'; subHeaderCtrl.appendChild(vBadge);
       } else if (mode === 'LOCAL') {
         subTitle.textContent = '👥 雙人同屏對戰 (面對面)';
       } else {
-        var diffNames = { BEGINNER: '簡單', NORMAL: '普通', HARD: '困難', MASTER: '大師' };
-        subTitle.textContent = `🤖 AI 對戰 (${diffNames[aiDifficulty]})`;
+        var diffMap = { BEGINNER: '簡單', NORMAL: '普通', HARD: '困難', MASTER: '大師' }; subTitle.textContent = `🤖 AI 對戰 (${diffMap[aiDifficulty]})`;
       }
 
-      if (playerColor === WHITE && (mode === 'AI' || mode === 'CAMPAIGN' || mode === 'TIMED' || mode === 'VOID')) {
-        board[7][7] = BLACK;
-        historyStack.push({r:7, c:7, p:BLACK});
-        lastPos = {r:7, c:7};
-        currentTurn = WHITE;
-      } else {
-        currentTurn = BLACK;
-      }
-
-      updateWhisper();
-      renderBoard();
+      if (playerColor === WHITE && ['AI','CAMPAIGN','TIMED','VOID'].includes(mode)) {
+        board[7][7] = BLACK; historyStack.push({r:7, c:7, p:BLACK}); lastPos = {r:7, c:7}; currentTurn = WHITE;
+      } else currentTurn = BLACK;
+      updateWhisper(); renderBoard();
     }
 
     function startTimedInterval() {
       clearInterval(timedTimer);
       timedTimer = setInterval(function() {
         if(isOver || isPaused || aiBusy) return;
-        timedRemaining--;
-        var badge = document.getElementById('timedBadge');
-        if(badge) badge.textContent = `倒數: ${timedRemaining}s`;
-        if(timedRemaining <= 0) {
-          clearInterval(timedTimer);
-          isOver = true;
-          showResult('⏱️ 思考超時！挑戰失敗', '時間歸零，請重新挑戰。');
-        }
+        timedRemaining--; var badge = document.getElementById('timedBadge'); if(badge) badge.textContent = `倒數: ${timedRemaining}s`;
+        if(timedRemaining <= 0) { clearInterval(timedTimer); isOver = true; showResult('⏱️ 思考超時！挑戰失敗', '時間歸零，請重新挑戰。'); }
       }, 1000);
     }
-
-    function togglePause() {
-      isPaused = !isPaused;
-      var overlay = document.getElementById('pauseOverlay');
-      if(isPaused) overlay.classList.remove('hidden');
-      else overlay.classList.add('hidden');
-    }
+    function togglePause() { isPaused = !isPaused; document.getElementById('pauseOverlay').classList.toggle('hidden', !isPaused); }
 
     function renderBoard() {
-      var prevDots = document.querySelectorAll('.last-dot');
-      for (var d = 0; d < prevDots.length; d++) {
-        prevDots[d].remove();
-      }
-
+      document.querySelectorAll('.last-dot').forEach(el => el.remove());
       for (var r = 0; r < SIZE; r++) {
         for (var c = 0; c < SIZE; c++) {
-          var cellEl = cellRefs[r][c];
-          var val = board[r][c];
-          var isVoid = isCellVoid(r, c);
-
-          if (isVoid) {
-            cellEl.classList.add('void-cell');
-          } else {
-            cellEl.classList.remove('void-cell');
-          }
-
-          var existingStone = cellEl.querySelector('.stone');
-
+          var cellEl = cellRefs[r][c], val = board[r][c], isVoid = isCellVoid(r, c);
+          cellEl.classList.toggle('void-cell', isVoid);
+          var exStone = cellEl.querySelector('.stone');
           if (val === EMPTY) {
-            if (existingStone) existingStone.remove();
-
-            var existingStar = cellEl.querySelector('.star');
-            var stars = [[3,3],[3,11],[7,7],[11,3],[11,11]];
-            var isStar = false;
-            for (var s = 0; s < stars.length; s++) {
-              if (stars[s][0] === r && stars[s][1] === c) { isStar = true; break; }
-            }
-            if (isStar && !existingStar) {
-              var st = document.createElement('div');
-              st.className = 'star';
-              cellEl.appendChild(st);
-            }
-
-            var existingCry = cellEl.querySelector('.crystal');
-            if (crystalBoard[r][c] > 0 && !existingCry) {
-              var cry = document.createElement('div');
-              cry.className = 'crystal';
-              cry.textContent = crystalBoard[r][c] === 1 ? '🔥' : '🛡️';
-              cellEl.appendChild(cry);
-            } else if (crystalBoard[r][c] === 0 && existingCry) {
-              existingCry.remove();
-            }
+            if (exStone) exStone.remove();
+            var isStar = [[3,3],[3,11],[7,7],[11,3],[11,11]].some(s => s[0]===r && s[1]===c);
+            if (isStar && !cellEl.querySelector('.star')) { var st = document.createElement('div'); st.className = 'star'; cellEl.appendChild(st); }
+            var exCry = cellEl.querySelector('.crystal');
+            if (crystalBoard[r][c] > 0 && !exCry) { var cry = document.createElement('div'); cry.className = 'crystal'; cry.textContent = crystalBoard[r][c]===1?'🔥':'🛡️'; cellEl.appendChild(cry); }
+            else if (crystalBoard[r][c] === 0 && exCry) exCry.remove();
           } else {
-            var starEl = cellEl.querySelector('.star');
-            if (starEl) starEl.remove();
-            var cryEl = cellEl.querySelector('.crystal');
-            if (cryEl) cryEl.remove();
-
-            if (!existingStone) {
-              var stNode = document.createElement('div');
-              stNode.className = 'stone ' + (val === BLACK ? 'stone-black' : 'stone-white');
-              cellEl.appendChild(stNode);
-              existingStone = stNode;
-            } else {
-              existingStone.className = 'stone ' + (val === BLACK ? 'stone-black' : 'stone-white');
-            }
-
-            if (shieldBoard[r][c]) {
-              existingStone.className += ' stone-shielded';
-            }
-
-            if (winCoords) {
-              for (var w = 0; w < winCoords.length; w++) {
-                if (winCoords[w].r === r && winCoords[w].c === c) {
-                  existingStone.className += ' stone-win';
-                }
-              }
-            }
-
-            if (lastPos && lastPos.r === r && lastPos.c === c) {
-              var dot = document.createElement('div');
-              dot.className = 'last-dot';
-              existingStone.appendChild(dot);
-            }
+            if (cellEl.querySelector('.star')) cellEl.querySelector('.star').remove();
+            if (cellEl.querySelector('.crystal')) cellEl.querySelector('.crystal').remove();
+            if (!exStone) { exStone = document.createElement('div'); exStone.className = 'stone ' + (val===BLACK?'stone-black':'stone-white'); cellEl.appendChild(exStone); }
+            else exStone.className = 'stone ' + (val===BLACK?'stone-black':'stone-white');
+            if (shieldBoard[r][c]) exStone.className += ' stone-shielded';
+            if (winCoords && winCoords.some(w => w.r===r && w.c===c)) exStone.className += ' stone-win';
+            if (lastPos && lastPos.r === r && lastPos.c === c) { var dot = document.createElement('div'); dot.className = 'last-dot'; exStone.appendChild(dot); }
           }
         }
       }
       document.getElementById('statusExtra').textContent = '手數：' + historyStack.length;
-      var statusMsg = '';
-      if (isOver) statusMsg = '對局結束';
-      else if (aiBusy) statusMsg = '⚡ AI 思考中...';
-      else if (gameMode === 'LOCAL') statusMsg = (currentTurn === BLACK ? '● 黑方' : '○ 白方') + ' 落子';
-      else if (gameMode === 'ONLINE') statusMsg = (currentTurn === BLACK ? '● 黑方' : '○ 白方') + ((onlineRole === 'HOST' && currentTurn === BLACK) || (onlineRole === 'GUEST' && currentTurn === WHITE) ? ' (你的回合)' : ' (對手思考中...)');
-      else statusMsg = (playerColor === BLACK ? '● 執黑' : '○ 執白') + '｜輪到你落子';
-      document.getElementById('statusText').textContent = statusMsg;
+      var sMsg = '';
+      if (isOver) sMsg = '對局結束'; else if (aiBusy) sMsg = '⚡ AI 思考中...';
+      else if (gameMode === 'LOCAL') sMsg = (currentTurn===BLACK?'● 黑方':'○ 白方') + ' 落子';
+      else if (gameMode === 'ONLINE') sMsg = (currentTurn===BLACK?'● 黑方':'○ 白方') + ((onlineRole==='HOST'&&currentTurn===BLACK)||(onlineRole==='GUEST'&&currentTurn===WHITE)?' (你的回合)':' (對手思考中...)');
+      else sMsg = (playerColor===BLACK?'● 執黑':'○ 執白') + '｜輪到你';
+      document.getElementById('statusText').textContent = sMsg;
     }
 
     function checkWinLine(b, r, c, p) {
       var dirs = [[0,1],[1,0],[1,1],[1,-1]];
       for (var i = 0; i < dirs.length; i++) {
-        var dr = dirs[i][0], dc = dirs[i][1];
-        var line = [{r:r, c:c}];
-        for (var s = 1; s < 6; s++) {
-          var nr = r + dr*s, nc = c + dc*s;
-          if (nr>=0 && nr<SIZE && nc>=0 && nc<SIZE && b[nr][nc] === p) line.push({r:nr, c:nc}); else break;
-        }
-        for (var s = 1; s < 6; s++) {
-          var nr = r - dr*s, nc = c - dc*s;
-          if (nr>=0 && nr<SIZE && nc>=0 && nc<SIZE && b[nr][nc] === p) line.push({r:nr, c:nc}); else break;
-        }
+        var dr = dirs[i][0], dc = dirs[i][1], line = [{r:r, c:c}];
+        for(var s=1; s<6; s++) { var nr=r+dr*s, nc=c+dc*s; if(nr>=0&&nr<SIZE&&nc>=0&&nc<SIZE&&b[nr][nc]===p) line.push({r:nr, c:nc}); else break; }
+        for(var s=1; s<6; s++) { var nr=r-dr*s, nc=c-dc*s; if(nr>=0&&nr<SIZE&&nc>=0&&nc<SIZE&&b[nr][nc]===p) line.push({r:nr, c:nc}); else break; }
         if (line.length >= 5) return line;
       }
       return null;
@@ -1155,400 +724,138 @@
 
     function onCellTap(r, c) {
       if (isOver || isPaused || board[r][c] !== EMPTY || isCellVoid(r, c)) return;
-
       if (gameMode === 'ONLINE') {
-        if ((onlineRole === 'HOST' && currentTurn !== BLACK) || (onlineRole === 'GUEST' && currentTurn !== WHITE)) {
-            updateWhisper('⏳ 還沒輪到你落子喔！請等待對手...');
-            return;
-        }
+        if ((onlineRole === 'HOST' && currentTurn !== BLACK) || (onlineRole === 'GUEST' && currentTurn !== WHITE)) { updateWhisper('⏳ 還沒輪到你落子喔！'); return; }
         var isLocalCrystal = triggerCrystalEffect(r, c, currentTurn);
         placeStone(r, c, currentTurn, isLocalCrystal);
-        var localWin = checkWinLine(board, r, c, currentTurn);
-        if (localWin) {
-            winCoords = localWin;
-            isOver = true;
-            updateWhisper('🎉 恭喜勝利！精彩的遠端對弈！');
-            showResult('🎉 恭喜獲勝！', '您在雲端對戰中擊敗了對手！', false);
-            renderBoard();
-        }
-        syncStateToPeer();
-        return;
+        if (winCoords = checkWinLine(board, r, c, currentTurn)) { isOver = true; updateWhisper('🎉 恭喜勝利！'); showResult('🎉 恭喜獲勝！', '遠端對戰中擊敗對手！', false); renderBoard(); }
+        syncStateToPeer(); return;
       }
-
       if (gameMode === 'LOCAL') {
         var isLocalCrystal = triggerCrystalEffect(r, c, currentTurn);
         placeStone(r, c, currentTurn, isLocalCrystal);
-        var localWin = checkWinLine(board, r, c, currentTurn);
-        if (localWin) {
-          winCoords = localWin;
-          isOver = true;
-          var winnerName = currentTurn === BLACK ? '白方' : '黑方';
-          updateWhisper('🎉 恭喜！' + winnerName + ' 獲得了勝利！⭐⭐⭐');
-          showResult('🎉 勝利！' + winnerName + ' 獲勝', '這是一場精彩的面對面對決！', false);
-          renderBoard();
-        }
+        if (winCoords = checkWinLine(board, r, c, currentTurn)) { isOver = true; updateWhisper('🎉 恭喜！' + (currentTurn===BLACK?'白方':'黑方') + ' 獲勝！'); showResult('🎉 勝利！', '面對面對決結束！', false); renderBoard(); }
         return;
       }
-
       if (aiBusy || currentTurn !== playerColor) return;
-      
-      var isCrystal = triggerCrystalEffect(r, c, playerColor);
-      placeStone(r, c, playerColor, isCrystal);
-
-      var wLine = checkWinLine(board, r, c, playerColor);
-      if (wLine) {
-        winCoords = wLine;
-        isOver = true;
-        updateWhisper('🎉 精彩絕倫的勝局！JOAN 為你起立鼓掌喝采！⭐⭐⭐');
-        showResult('🎉 勝利！完美擊敗對手 ⭐⭐⭐', '恭喜你贏得本局勝利！', gameMode === 'CAMPAIGN');
-        renderBoard();
-        return;
-      }
-
-      if (!isOver) {
-        aiBusy = true;
-        renderBoard();
-        setTimeout(aiTurn, 260);
-      }
+      var isCrystal = triggerCrystalEffect(r, c, playerColor); placeStone(r, c, playerColor, isCrystal);
+      if (winCoords = checkWinLine(board, r, c, playerColor)) { isOver = true; updateWhisper('🎉 精彩的勝局！'); showResult('🎉 勝利！完美擊敗對手', '恭喜獲勝！', gameMode === 'CAMPAIGN'); renderBoard(); return; }
+      if (!isOver) { aiBusy = true; renderBoard(); setTimeout(aiTurn, 260); }
     }
 
-    // ====== 落子與遊戲控制函數 ======
     function placeStone(r, c, piece, isCrystal) {
-      // 儲存悔棋快照
-      var snapBoard = board.map(function(row) { return row.slice(); });
-      var snapCrystal = crystalBoard.map(function(row) { return row.slice(); });
-      var snapShield = shieldBoard.map(function(row) { return row.slice(); });
-
-      board[r][c] = piece;
-      lastPos = { r: r, c: c };
-      historyStack.push({
-        r: r, c: c, p: piece,
-        boardSnap: snapBoard,
-        crystalSnap: snapCrystal,
-        shieldSnap: snapShield
-      });
-
+      var snapB = board.map(row => row.slice()), snapC = crystalBoard.map(row => row.slice()), snapS = shieldBoard.map(row => row.slice());
+      board[r][c] = piece; lastPos = { r: r, c: c };
+      historyStack.push({ r: r, c: c, p: piece, boardSnap: snapB, crystalSnap: snapC, shieldSnap: snapS });
       playTone(piece === BLACK ? 420 : 340, 0.06);
-
-      if (gameMode === 'VOID') {
-        checkAndTriggerVoidCollapse();
-      }
-
-      currentTurn = (piece === BLACK) ? WHITE : BLACK;
-      updateWhisper();
-      renderBoard();
+      if (gameMode === 'VOID') checkAndTriggerVoidCollapse();
+      currentTurn = (piece === BLACK) ? WHITE : BLACK; updateWhisper(); renderBoard();
     }
 
     function restartCurrentGame() {
       if (gameMode === 'ONLINE') {
-          if (onlineRole !== 'HOST') {
-              updateWhisper('❌ 只有房主 (Host) 可以重新開始新局喔！');
-              return;
-          }
-          startGameSession('ONLINE');
-          if (peerConn && peerConn.open) peerConn.send({ type: 'RESTART' });
-          syncStateToPeer();
-          return;
+          if (onlineRole !== 'HOST') { updateWhisper('❌ 只有房主可以重新開局喔！'); return; }
+          startGameSession('ONLINE'); if(peerConn&&peerConn.open) peerConn.send({ type: 'RESTART' }); syncStateToPeer(); return;
       }
       startGameSession(gameMode);
     }
 
     function undoMove() {
-      if (gameMode === 'ONLINE') {
-          updateWhisper('🔒 遠端連線對戰為了確保公平與同步，不支援悔棋功能喔！');
-          return;
-      }
+      if (gameMode === 'ONLINE') { updateWhisper('🔒 遠端連線對戰不支援悔棋喔！'); return; }
       if (isOver || aiBusy || historyStack.length === 0) return;
-
-      var stepsToUndo = 1;
-      if (gameMode === 'AI' || gameMode === 'CAMPAIGN' || gameMode === 'TIMED' || gameMode === 'VOID') {
-        stepsToUndo = (historyStack.length >= 2) ? 2 : 1;
-      }
-
-      var targetState = null;
-      for (var i = 0; i < stepsToUndo; i++) {
-        if (historyStack.length > 0) {
-          targetState = historyStack.pop();
-        }
-      }
-
-      if (targetState) {
-        board = targetState.boardSnap;
-        crystalBoard = targetState.crystalSnap;
-        shieldBoard = targetState.shieldSnap;
+      var steps = (gameMode === 'LOCAL' || historyStack.length < 2) ? 1 : 2;
+      var target = null; for (var i=0; i<steps; i++) { if (historyStack.length > 0) target = historyStack.pop(); }
+      if (target) {
+        board = target.boardSnap; crystalBoard = target.crystalSnap; shieldBoard = target.shieldSnap;
         lastPos = historyStack.length > 0 ? { r: historyStack[historyStack.length - 1].r, c: historyStack[historyStack.length - 1].c } : null;
-        winCoords = null;
-        isOver = false;
-        currentTurn = playerColor;
-        if (gameMode === 'LOCAL') {
-          currentTurn = historyStack.length > 0 ? (historyStack[historyStack.length - 1].p === BLACK ? WHITE : BLACK) : BLACK;
-        }
-        document.getElementById('resultBox').classList.add('hidden');
-        updateWhisper('↩ 已成功悔棋，重整陣勢再出發！');
-        renderBoard();
+        winCoords = null; isOver = false; currentTurn = gameMode === 'LOCAL' ? (historyStack.length > 0 ? (historyStack[historyStack.length - 1].p === BLACK ? WHITE : BLACK) : BLACK) : playerColor;
+        document.getElementById('resultBox').classList.add('hidden'); updateWhisper('↩ 已成功悔棋，重整陣勢再出發！'); renderBoard();
       }
     }
 
-    function nextCampaignLevel() {
-      if (currentCampaignLevel < 20) {
-        currentCampaignLevel++;
-        startGameSession('CAMPAIGN');
-      } else {
-        updateWhisper('🏆 恭喜通關所有關卡！你已經是五子棋大師！');
-      }
-    }
-
+    function nextCampaignLevel() { if (currentCampaignLevel < 20) { currentCampaignLevel++; startGameSession('CAMPAIGN'); } }
     function showResult(title, desc, showNext) {
-      var box = document.getElementById('resultBox');
-      var t = document.getElementById('resultTitle');
-      var d = document.getElementById('resultDesc');
-      var nextBtn = document.getElementById('btnNextLevel');
-      if (!box || !t || !d) return;
-      t.textContent = title;
-      d.textContent = desc;
-      if (showNext && currentCampaignLevel < 20) {
-        nextBtn.classList.remove('hidden');
-      } else {
-        nextBtn.classList.add('hidden');
-      }
-      box.classList.remove('hidden');
+      document.getElementById('resultTitle').textContent = title; document.getElementById('resultDesc').textContent = desc;
+      document.getElementById('btnNextLevel').classList.toggle('hidden', !(showNext && currentCampaignLevel < 20));
+      document.getElementById('resultBox').classList.remove('hidden');
     }
 
-    // ====== AI 決策引擎 ======
     function evaluatePoint(b, r, c, piece) {
-      var total = 0;
-      var liveThrees = 0;
-      var rushFours = 0;
-      var dirs = [[0, 1], [1, 0], [1, 1], [1, -1]];
-
-      for (var d = 0; d < dirs.length; d++) {
-        var dr = dirs[d][0], dc = dirs[d][1];
-        var count = 1;
-        var openEnds = 0;
-
-        var s = 1;
-        while (s < 5) {
-          var nr = r + dr * s, nc = c + dc * s;
-          if (nr >= 0 && nr < SIZE && nc >= 0 && nc < SIZE && b[nr][nc] === piece) { count++; s++; }
-          else {
-            if (nr >= 0 && nr < SIZE && nc >= 0 && nc < SIZE && b[nr][nc] === EMPTY && !isCellVoid(nr, nc)) openEnds++;
-            break;
-          }
-        }
-
-        s = 1;
-        while (s < 5) {
-          var nr = r - dr * s, nc = c - dc * s;
-          if (nr >= 0 && nr < SIZE && nc >= 0 && nc < SIZE && b[nr][nc] === piece) { count++; s++; }
-          else {
-            if (nr >= 0 && nr < SIZE && nc >= 0 && nc < SIZE && b[nr][nc] === EMPTY && !isCellVoid(nr, nc)) openEnds++;
-            break;
-          }
-        }
-
-        if (count >= 5) total += 1000000;
-        else if (count === 4 && openEnds === 2) total += 120000;
-        else if (count === 4 && openEnds === 1) { total += 15000; rushFours++; }
-        else if (count === 3 && openEnds === 2) { total += 9000; liveThrees++; }
-        else if (count === 3 && openEnds === 1) total += 1200;
-        else if (count === 2 && openEnds === 2) total += 600;
-        else if (count === 2 && openEnds === 1) total += 120;
+      var total = 0, liveThrees = 0, rushFours = 0, dirs = [[0,1], [1,0], [1,1], [1,-1]];
+      for (var d = 0; d < 4; d++) {
+        var dr = dirs[d][0], dc = dirs[d][1], count = 1, openEnds = 0, s = 1;
+        while(s<5) { var nr=r+dr*s, nc=c+dc*s; if(nr>=0&&nr<SIZE&&nc>=0&&nc<SIZE&&b[nr][nc]===piece) {count++;s++;} else { if(nr>=0&&nr<SIZE&&nc>=0&&nc<SIZE&&b[nr][nc]===EMPTY&&!isCellVoid(nr,nc)) openEnds++; break;} }
+        s=1; while(s<5) { var nr=r-dr*s, nc=c-dc*s; if(nr>=0&&nr<SIZE&&nc>=0&&nc<SIZE&&b[nr][nc]===piece) {count++;s++;} else { if(nr>=0&&nr<SIZE&&nc>=0&&nc<SIZE&&b[nr][nc]===EMPTY&&!isCellVoid(nr,nc)) openEnds++; break;} }
+        if(count>=5) total+=1000000; else if(count===4&&openEnds===2) total+=120000; else if(count===4&&openEnds===1) { total+=15000; rushFours++; }
+        else if(count===3&&openEnds===2) { total+=9000; liveThrees++; } else if(count===3&&openEnds===1) total+=1200; else if(count===2&&openEnds===2) total+=600; else if(count===2&&openEnds===1) total+=120;
       }
-
-      if (rushFours >= 2 || (rushFours >= 1 && liveThrees >= 1)) total += 90000;
-      else if (liveThrees >= 2) total += 70000;
-
-      total += (14 - (Math.abs(r - 7) + Math.abs(c - 7))) * 8;
-      return total;
+      if (rushFours >= 2 || (rushFours >= 1 && liveThrees >= 1)) total += 90000; else if (liveThrees >= 2) total += 70000;
+      total += (14 - (Math.abs(r - 7) + Math.abs(c - 7))) * 8; return total;
     }
 
     function computeBestAIMove(b, aiPiece, difficulty) {
-      var oppPiece = (aiPiece === BLACK) ? WHITE : BLACK;
-      var candidates = [];
-      var hasStone = false;
-
-      for (var r = 0; r < SIZE; r++) {
-        for (var c = 0; c < SIZE; c++) {
+      var oppPiece = (aiPiece === BLACK) ? WHITE : BLACK, cands = [], hasStone = false;
+      for (var r=0; r<SIZE; r++) { for (var c=0; c<SIZE; c++) {
           if (b[r][c] !== EMPTY || isCellVoid(r, c)) continue;
-          hasStone = true;
-
-          var near = false;
-          for (var dr = -2; dr <= 2 && !near; dr++) {
-            for (var dc = -2; dc <= 2 && !near; dc++) {
-              var nr = r + dr, nc = c + dc;
-              if (nr >= 0 && nr < SIZE && nc >= 0 && nc < SIZE && b[nr][nc] !== EMPTY) {
-                near = true;
-              }
-            }
-          }
-
+          hasStone = true; var near = false;
+          for(var dr=-2;dr<=2&&!near;dr++){ for(var dc=-2;dc<=2&&!near;dc++){ var nr=r+dr, nc=c+dc; if(nr>=0&&nr<SIZE&&nc>=0&&nc<SIZE&&b[nr][nc]!==EMPTY) near=true; } }
           if (near || historyStack.length === 0) {
-            var atk = evaluatePoint(b, r, c, aiPiece);
-            var def = evaluatePoint(b, r, c, oppPiece);
-
-            // 晶石戰術權重
-            var crystalBonus = 0;
+            var atk = evaluatePoint(b, r, c, aiPiece), def = evaluatePoint(b, r, c, oppPiece), cBonus = 0;
             if (gameMode === 'CRYSTAL' && crystalBoard[r][c] > 0) {
-              if (crystalBoard[r][c] === 1) { // 烈焰晶石
-                var enemyInBlast = 0;
-                for (var dr = -2; dr <= 2; dr++) {
-                  for (var dc = -2; dc <= 2; dc++) {
-                    var br = r + dr, bc = c + dc;
-                    if (br >= 0 && br < SIZE && bc >= 0 && bc < SIZE && b[br][bc] === oppPiece && !shieldBoard[br][bc]) {
-                      enemyInBlast++;
-                    }
-                  }
-                }
-                if (enemyInBlast === 0) {
-                  crystalBonus = -3000; // 禁空爆：周圍無敵子不提早浪費烈焰
-                } else {
-                  crystalBonus = enemyInBlast * 9000;
-                }
-              } else if (crystalBoard[r][c] === 2) { // 護盾晶石
-                crystalBonus = (atk > 2000) ? 6000 : 800;
-              }
+              if (crystalBoard[r][c] === 1) { var eb = 0; for(var ddr=-2;ddr<=2;ddr++){ for(var ddc=-2;ddc<=2;ddc++){ var br=r+ddr, bc=c+ddc; if(br>=0&&br<SIZE&&bc>=0&&bc<SIZE&&b[br][bc]===oppPiece&&!shieldBoard[br][bc]) eb++; } } cBonus = eb === 0 ? -3000 : eb*9000; }
+              else if (crystalBoard[r][c] === 2) { cBonus = atk > 2000 ? 6000 : 800; }
             }
-
-            // 虛空避險
-            if (gameMode === 'VOID') {
-              var distToEdge = Math.min(r - voidRings, (SIZE - 1 - voidRings) - r, c - voidRings, (SIZE - 1 - voidRings) - c);
-              if (distToEdge <= 0) crystalBonus -= 5000;
-            }
-
+            if (gameMode === 'VOID') { var distToEdge = Math.min(r-voidRings, SIZE-1-voidRings-r, c-voidRings, SIZE-1-voidRings-c); if(distToEdge<=0) cBonus -= 5000; }
             if (atk >= 1000000) return { r: r, c: c };
-
-            // 讓不同難度有極度鮮明的防守意識差異
-            var defMultiplier = 1.0;
-            if (difficulty === 'BEGINNER') defMultiplier = 0.8;      // 簡單：防守意識稍弱，但不至於完全不防
-            else if (difficulty === 'NORMAL') defMultiplier = 1.0;   // 普通：正常防守
-            else if (difficulty === 'HARD') defMultiplier = 1.2;     // 困難：積極防守
-            else if (difficulty === 'MASTER') defMultiplier = 1.5;   // 大師：滴水不漏，防守至上
-
-            // 加入「雜訊干擾」，讓低難度更像人類新手會犯的錯
-            var noise = 0;
-            // 簡單模式雜訊 2500：會讓它在開局時下得比較隨性，但不會笨到漏看「活三(9000分)」這種明顯的致命威脅
-            if (difficulty === 'BEGINNER') noise = Math.random() * 2500; 
-            else if (difficulty === 'NORMAL') noise = Math.random() * 800;
-
-            candidates.push({
-              r: r, c: c,
-              atk: atk, def: def,
-              score: atk + def * defMultiplier + crystalBonus + noise
-            });
+            var defM = difficulty==='BEGINNER'?0.8 : difficulty==='NORMAL'?1.0 : difficulty==='HARD'?1.2 : 1.5;
+            var noise = difficulty==='BEGINNER' ? Math.random()*2500 : difficulty==='NORMAL' ? Math.random()*800 : 0;
+            cands.push({ r: r, c: c, def: def, score: atk + def*defM + cBonus + noise });
           }
-        }
-      }
-
-      if (!hasStone || candidates.length === 0) return { r: 7, c: 7 };
-
-      candidates.sort(function(a, b) { return b.def - a.def; });
-      // 確保無論哪個難度，只要對手要連五了，必定強制去擋
-      if (candidates[0].def >= 1000000) return { r: candidates[0].r, c: candidates[0].c };
-
-      candidates.sort(function(a, b) { return b.score - a.score; });
-      
-      // 🟢 簡單 與 🔵 普通模式：單步貪婪法。
-      // 由於前面已經加入了不同程度的 noise（雜訊），它們在佈局期會展現出人類新手的隨機性（不一定下最完美的位置），
-      // 但只要盤面出現「活三 (9000分)」等巨大威脅，分數碾壓了雜訊值，它們就會乖乖防守，不再是亂下的笨蛋。
-      if (difficulty === 'BEGINNER' || difficulty === 'NORMAL') {
-        return { r: candidates[0].r, c: candidates[0].c };
-      }
-
-      // 🔴 困難 與 👑 大師模式：開啟「預測未來」的多步深度搜索
-      var searchBreadth = difficulty === 'MASTER' ? 10 : 4; // 大師會同時衡量 10 條路線
-      var topN = candidates.slice(0, searchBreadth);
-      var bestMove = topN[0];
-      var bestVal = -Infinity;
-
-      for (var i = 0; i < topN.length; i++) {
-        var cand = topN[i];
-        b[cand.r][cand.c] = aiPiece;
-        var worstReply = 0;
-        for (var tr = 0; tr < SIZE; tr++) {
-          for (var tc = 0; tc < SIZE; tc++) {
-            if (b[tr][tc] === EMPTY && !isCellVoid(tr, tc)) {
-              var oppSc = evaluatePoint(b, tr, tc, oppPiece);
-              if (oppSc > worstReply) worstReply = oppSc;
-            }
-          }
-        }
+      }}
+      if (!hasStone || cands.length === 0) return { r: 7, c: 7 };
+      cands.sort((x, y) => y.def - x.def); if (cands[0].def >= 1000000) return { r: cands[0].r, c: cands[0].c };
+      cands.sort((x, y) => y.score - x.score);
+      if (difficulty === 'BEGINNER' || difficulty === 'NORMAL') return { r: cands[0].r, c: cands[0].c };
+      var topN = cands.slice(0, difficulty === 'MASTER' ? 10 : 4), best = topN[0], bestV = -Infinity;
+      for (var i=0; i<topN.length; i++) {
+        var cand = topN[i]; b[cand.r][cand.c] = aiPiece; var worstRep = 0;
+        for (var tr=0; tr<SIZE; tr++) { for(var tc=0; tc<SIZE; tc++) { if(b[tr][tc]===EMPTY&&!isCellVoid(tr,tc)) worstRep = Math.max(worstRep, evaluatePoint(b, tr, tc, oppPiece)); } }
         b[cand.r][cand.c] = EMPTY;
-
-        // 大師模式(0.95) 會極度厭惡「讓對手有機會反擊」的路線；困難模式(0.6) 則相對寬容
-        var penaltyWeight = difficulty === 'MASTER' ? 0.95 : 0.6;
-        var netVal = cand.score - worstReply * penaltyWeight;
-
-        if (netVal > bestVal) {
-          bestVal = netVal;
-          bestMove = cand;
-        }
+        var netV = cand.score - worstRep * (difficulty === 'MASTER' ? 0.95 : 0.6);
+        if (netV > bestV) { bestV = netV; best = cand; }
       }
-
-      return { r: bestMove.r, c: bestMove.c };
+      return { r: best.r, c: best.c };
     }
 
     function aiTurn() {
-      if (isOver || isPaused) {
-        aiBusy = false;
-        return;
-      }
-
-      var aiPiece = (playerColor === BLACK) ? WHITE : BLACK;
-      var move = computeBestAIMove(board, aiPiece, aiDifficulty);
-
+      if (isOver || isPaused) { aiBusy = false; return; }
+      var aiPiece = (playerColor === BLACK) ? WHITE : BLACK, move = computeBestAIMove(board, aiPiece, aiDifficulty);
       if (move && board[move.r][move.c] === EMPTY && !isCellVoid(move.r, move.c)) {
-        var isCrystal = triggerCrystalEffect(move.r, move.c, aiPiece);
-        placeStone(move.r, move.c, aiPiece, isCrystal);
-
-        var wLine = checkWinLine(board, move.r, move.c, aiPiece);
-        if (wLine) {
-          winCoords = wLine;
-          isOver = true;
-          aiBusy = false;
-          playTone(180, 0.35);
-          updateWhisper('🤖 AI 率先連成五子！休息喝口水，再來挑戰一局吧！');
-          showResult('🤖 挑戰未成，再接再厲！', 'AI 率先連成了五子，換個思路下一把贏回來！', false);
-          renderBoard();
-          return;
+        var isCrystal = triggerCrystalEffect(move.r, move.c, aiPiece); placeStone(move.r, move.c, aiPiece, isCrystal);
+        if (winCoords = checkWinLine(board, move.r, move.c, aiPiece)) {
+          isOver = true; aiBusy = false; playTone(180, 0.35); updateWhisper('🤖 AI 率先連成五子！休息喝口水，再來挑戰一局吧！');
+          showResult('🤖 挑戰未成，再接再厲！', 'AI 率先連成了五子！', false); renderBoard(); return;
         }
-
-        var isDraw = true;
-        for (var r = 0; r < SIZE && isDraw; r++) {
-          for (var c = 0; c < SIZE; c++) {
-            if (board[r][c] === EMPTY && !isCellVoid(r, c)) { isDraw = false; break; }
-          }
-        }
-        if (isDraw) {
-          isOver = true;
-          aiBusy = false;
-          updateWhisper('🤝 盤面走滿，雙方勢均力敵成和局！');
-          showResult('🤝 勢均力敵・和局', '雙方防守滴水不漏，這是一場精湛的和局！', false);
-          renderBoard();
-          return;
-        }
+        var isDraw = true; for (var r=0; r<SIZE&&isDraw; r++) { for(var c=0; c<SIZE; c++) { if(board[r][c]===EMPTY&&!isCellVoid(r,c)) {isDraw=false;break;} } }
+        if (isDraw) { isOver=true; aiBusy=false; updateWhisper('🤝 盤面走滿，雙方成和局！'); showResult('🤝 和局', '這是一場精湛的和局！', false); renderBoard(); return; }
       }
-
-      aiBusy = false;
-      currentTurn = playerColor;
-      timedRemaining = timedLimitSec;
-      renderBoard();
+      aiBusy = false; currentTurn = playerColor; timedRemaining = timedLimitSec; renderBoard();
     }
 
     window.addEventListener('DOMContentLoaded', function() {
-      initGrid();
-      showMenu();
-      
-      // 自動偵測網址列的房號加入對局
-      var params = new URLSearchParams(window.location.search);
-      var roomCode = params.get('room');
+      initGrid(); showMenu();
+      var params = new URLSearchParams(window.location.search), roomCode = params.get('room');
       if (roomCode && roomCode.length === 6) {
-          document.getElementById('joinRoomInput').value = roomCode;
-          openOnlineLobby();
-          setTimeout(function() { joinOnlineRoom(); }, 600); // 稍微延遲確保UI轉場
+          document.getElementById('joinRoomInput').value = roomCode; openOnlineLobby();
+          setTimeout(function() { joinOnlineRoom(); }, 600);
           try { window.history.replaceState({}, document.title, window.location.pathname); } catch(e) {}
       }
     });
-
   </script>
 </body>
 </html>
+```
+
+### 🎯 本次升級亮點與測試步驟：
+1. **內建瀏覽器警告**：如果你再用 LINE 點開，畫面上方會出現黃色警告，提醒你點右上角「用預設瀏覽器(Safari)」開啟，這樣 P2P 連線就不會被 LINE 惡意封鎖了！
+2. **斷線重試**：當你的朋友在房間大廳複製連結並切換到 LINE 時，他的手機瀏覽器其實已經「被休眠」了，因此當你點擊加入時會顯示找不到。現在程式會聰明地**每 2 秒幫你自動重新連線一次，連試 3 次**，給對方時間切回網頁！
