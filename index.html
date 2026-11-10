@@ -4,8 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>JOAN GOMOKU ｜ 棋藝異想世界 (v2026.11.08.7)</title>
-  <!-- 加入 PeerJS 函式庫，實現 P2P 免伺服器連線 -->
-  <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+  <!-- 加入 PeerJS 函式庫，實現 P2P 免伺服器連線 (改用更穩定的 cdnjs) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.2/peerjs.min.js"></script>
   <style>
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
     body {
@@ -317,6 +317,9 @@
         <div style="margin: 16px 0; color: #7D5233; font-weight:bold; font-size:13px;">—— 或輸入房號加入 ——</div>
         <input type="text" id="joinRoomInput" placeholder="輸入 6 碼數字" style="width:100%; padding:10px; border:2px solid #C89666; border-radius:8px; margin-bottom:12px; text-align:center; font-size:18px; letter-spacing:6px; font-weight:bold; color:#3E2723;" maxlength="6" pattern="\d*">
         <button class="btn btn-brown" style="width:100%; padding:12px; font-size:14px;" onclick="joinOnlineRoom()">加入對戰 (Join)</button>
+        <!-- 新增：大廳專屬的連線狀態提示 -->
+        <div id="lobbyStatusText" style="font-size:13px; font-weight:bold; color:#0277BD; margin-top:14px; min-height:18px;"></div>
+        <div style="font-size:11px; color:#8D6E63; margin-top:8px;">(若無反應，請點右上角「使用 Safari / 預設瀏覽器」開啟)</div>
       </div>
       <div class="card hidden" id="lobbyWaiting" style="cursor:default; text-align:center; padding: 30px 20px;">
         <div style="font-size:15px; font-weight:bold; color:#5D4037; margin-bottom:12px;">邀請好友輸入以下房號</div>
@@ -750,6 +753,15 @@
     function startVoidMode() { gameMode = 'VOID'; startGameSession('VOID'); }
     function startLocalMode() { gameMode = 'LOCAL'; startGameSession('LOCAL'); }
 
+    // 新增：處理大廳專屬的狀態顯示
+    function setLobbyStatus(msg, isError) {
+      var el = document.getElementById('lobbyStatusText');
+      if (el) {
+        el.textContent = msg;
+        el.style.color = isError ? '#B71C1C' : '#0277BD';
+      }
+    }
+
     // ====== 雲端連線大廳函數 (改為 PeerJS 點對點連線) ======
     function openOnlineLobby() {
        document.getElementById('viewMenu').classList.add('hidden');
@@ -757,32 +769,36 @@
        document.getElementById('lobbyMenu').classList.remove('hidden');
        document.getElementById('lobbyWaiting').classList.add('hidden');
        document.getElementById('btnBack').classList.remove('hidden');
-       updateWhisper('🌐 歡迎來到 P2P 連線大廳！(免伺服器，直接連線)');
+       setLobbyStatus('選擇建立房間，或輸入朋友的房號加入', false);
     }
 
     function createOnlineRoom() {
-       var code = Math.floor(100000 + Math.random() * 900000).toString();
-       onlineRoomId = code;
-       onlineRole = 'HOST';
-       
-       updateWhisper('正在建立房間，請稍候...');
-       peer = new Peer('joangomoku-' + code);
-       
-       peer.on('open', function(id) {
-           document.getElementById('lobbyMenu').classList.add('hidden');
-           document.getElementById('lobbyWaiting').classList.remove('hidden');
-           document.getElementById('lobbyRoomCode').textContent = code;
-           updateWhisper('房號 [' + code + '] 已建立！請點擊複製連結傳給好友！等待對方連線...');
-       });
+       setLobbyStatus('⏳ 正在連接至 P2P 伺服器，請稍候...', false);
+       try {
+           var code = Math.floor(100000 + Math.random() * 900000).toString();
+           onlineRoomId = code;
+           onlineRole = 'HOST';
+           
+           peer = new Peer('joangomoku-' + code);
+           
+           peer.on('open', function(id) {
+               document.getElementById('lobbyMenu').classList.add('hidden');
+               document.getElementById('lobbyWaiting').classList.remove('hidden');
+               document.getElementById('lobbyRoomCode').textContent = code;
+               setLobbyStatus('', false);
+           });
 
-       peer.on('connection', function(conn) {
-           peerConn = conn;
-           setupPeerConnection();
-       });
-       
-       peer.on('error', function(err) {
-           updateWhisper('❌ 建立房間失敗: ' + err.type);
-       });
+           peer.on('connection', function(conn) {
+               peerConn = conn;
+               setupPeerConnection();
+           });
+           
+           peer.on('error', function(err) {
+               setLobbyStatus('❌ 建立房間失敗: ' + err.type, true);
+           });
+       } catch (e) {
+           setLobbyStatus('❌ 瀏覽器不支援，請使用 Safari 或 Chrome 開啟。', true);
+       }
     }
 
     function copyInviteLink() {
@@ -798,21 +814,26 @@
 
     function joinOnlineRoom() {
        var code = document.getElementById('joinRoomInput').value.trim();
-       if(code.length !== 6) { updateWhisper('請輸入完整的 6 位數房號。'); return; }
+       if(code.length !== 6) { setLobbyStatus('⚠️ 請輸入完整的 6 位數房號。', true); return; }
        
        onlineRoomId = code;
        onlineRole = 'GUEST';
-       updateWhisper('正在尋找房間連線...');
+       setLobbyStatus('⏳ 正在尋找房間並建立連線，請稍候...', false);
        
-       peer = new Peer();
-       peer.on('open', function(id) {
-           peerConn = peer.connect('joangomoku-' + code, { reliable: true });
-           setupPeerConnection();
-       });
-       
-       peer.on('error', function(err) {
-           updateWhisper('❌ 連線失敗: 找不到該房間或網路異常');
-       });
+       try {
+           peer = new Peer();
+           peer.on('open', function(id) {
+               setLobbyStatus('⏳ 房間已找到，正在等待雙方同步資料...', false);
+               peerConn = peer.connect('joangomoku-' + code, { reliable: true });
+               setupPeerConnection();
+           });
+           
+           peer.on('error', function(err) {
+               setLobbyStatus('❌ 連線失敗: 找不到該房間或網路異常', true);
+           });
+       } catch (e) {
+           setLobbyStatus('❌ 瀏覽器不支援，請使用 Safari 或 Chrome 開啟。', true);
+       }
     }
 
     function setupPeerConnection() {
