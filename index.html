@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>JOAN GOMOKU ｜ 棋藝異想世界 (v2026.11.08.7)</title>
+  <!-- 加入 PeerJS 函式庫，實現 P2P 免伺服器連線 -->
+  <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
   <style>
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
     body {
@@ -446,7 +448,8 @@
 
     var onlineRole = null; // 'HOST' or 'GUEST'
     var onlineRoomId = null;
-    var unsubOnline = null;
+    var peer = null;
+    var peerConn = null;
 
     var voidRings = 0;
     var VOID_STEP_INTERVAL = 8;
@@ -694,7 +697,8 @@
 
     function showMenu() {
       clearInterval(timedTimer);
-      if (unsubOnline) { unsubOnline(); unsubOnline = null; }
+      if (peerConn) { peerConn.close(); peerConn = null; }
+      if (peer) { peer.destroy(); peer = null; }
       onlineRoomId = null;
       onlineRole = null;
       document.getElementById('viewPlay').classList.add('hidden');
@@ -746,41 +750,39 @@
     function startVoidMode() { gameMode = 'VOID'; startGameSession('VOID'); }
     function startLocalMode() { gameMode = 'LOCAL'; startGameSession('LOCAL'); }
 
-    // ====== 雲端連線大廳函數 ======
-    async function openOnlineLobby() {
-       updateWhisper('正在連線至雲端伺服器...');
-       var ready = await (window.fbInitPromise || Promise.resolve(false));
-       if (!ready || !window.fbAuth || !window.fbAuth.currentUser) {
-           updateWhisper('❌ 無法連線至伺服器，請稍後再試。');
-           return;
-       }
+    // ====== 雲端連線大廳函數 (改為 PeerJS 點對點連線) ======
+    function openOnlineLobby() {
        document.getElementById('viewMenu').classList.add('hidden');
        document.getElementById('viewOnlineLobby').classList.remove('hidden');
        document.getElementById('lobbyMenu').classList.remove('hidden');
        document.getElementById('lobbyWaiting').classList.add('hidden');
        document.getElementById('btnBack').classList.remove('hidden');
-       updateWhisper('🌐 歡迎來到雲端大廳！請建立房間或輸入好友的房號加入對局。');
+       updateWhisper('🌐 歡迎來到 P2P 連線大廳！(免伺服器，直接連線)');
     }
 
-    async function createOnlineRoom() {
+    function createOnlineRoom() {
        var code = Math.floor(100000 + Math.random() * 900000).toString();
        onlineRoomId = code;
        onlineRole = 'HOST';
-       var uid = window.fbAuth.currentUser.uid;
-       var roomRef = window.fbDoc(window.fbDb, 'artifacts', window.fbAppId, 'public', 'data', 'gomokuRooms', code);
        
-       await window.fbSetDoc(roomRef, {
-           hostId: uid,
-           guestId: null,
-           status: 'WAITING',
-           createdAt: Date.now()
+       updateWhisper('正在建立房間，請稍候...');
+       peer = new Peer('joangomoku-' + code);
+       
+       peer.on('open', function(id) {
+           document.getElementById('lobbyMenu').classList.add('hidden');
+           document.getElementById('lobbyWaiting').classList.remove('hidden');
+           document.getElementById('lobbyRoomCode').textContent = code;
+           updateWhisper('房號 [' + code + '] 已建立！請點擊複製連結傳給好友！等待對方連線...');
        });
 
-       document.getElementById('lobbyMenu').classList.add('hidden');
-       document.getElementById('lobbyWaiting').classList.remove('hidden');
-       document.getElementById('lobbyRoomCode').textContent = code;
-       updateWhisper('房號 [' + code + '] 已建立！請點擊複製連結傳給好友！');
-       listenOnlineRoom();
+       peer.on('connection', function(conn) {
+           peerConn = conn;
+           setupPeerConnection();
+       });
+       
+       peer.on('error', function(err) {
+           updateWhisper('❌ 建立房間失敗: ' + err.type);
+       });
     }
 
     function copyInviteLink() {
@@ -794,77 +796,77 @@
        updateWhisper('📋 邀請連結已複製！快貼給朋友吧！');
     }
 
-    async function joinOnlineRoom() {
+    function joinOnlineRoom() {
        var code = document.getElementById('joinRoomInput').value.trim();
        if(code.length !== 6) { updateWhisper('請輸入完整的 6 位數房號。'); return; }
-       updateWhisper('正在搜尋房間...');
-       var uid = window.fbAuth.currentUser.uid;
-       var roomRef = window.fbDoc(window.fbDb, 'artifacts', window.fbAppId, 'public', 'data', 'gomokuRooms', code);
-       var snap = await window.fbGetDoc(roomRef);
        
-       if (!snap.exists() || snap.data().status !== 'WAITING') {
-           updateWhisper('❌ 找不到該房間，或房間已在對局中。');
-           return;
-       }
        onlineRoomId = code;
        onlineRole = 'GUEST';
-       await window.fbSetDoc(roomRef, { guestId: uid, status: 'PLAYING' }, { merge: true });
-       document.getElementById('viewOnlineLobby').classList.add('hidden');
-       updateWhisper('成功加入房間！雲端對戰即將開始！');
-       startGameSession('ONLINE');
-       listenOnlineRoom();
+       updateWhisper('正在尋找房間連線...');
+       
+       peer = new Peer();
+       peer.on('open', function(id) {
+           peerConn = peer.connect('joangomoku-' + code, { reliable: true });
+           setupPeerConnection();
+       });
+       
+       peer.on('error', function(err) {
+           updateWhisper('❌ 連線失敗: 找不到該房間或網路異常');
+       });
     }
 
-    function listenOnlineRoom() {
-        if(unsubOnline) unsubOnline();
-        var roomRef = window.fbDoc(window.fbDb, 'artifacts', window.fbAppId, 'public', 'data', 'gomokuRooms', onlineRoomId);
-        
-        unsubOnline = window.fbOnSnapshot(roomRef, function(snap) {
-            if (!snap.exists()) return;
-            var data = snap.data();
+    function setupPeerConnection() {
+        peerConn.on('open', function() {
+            document.getElementById('viewOnlineLobby').classList.add('hidden');
+            updateWhisper('✅ 連線成功！遊戲開始！');
+            startGameSession('ONLINE');
             
-            if (onlineRole === 'HOST' && data.status === 'PLAYING' && gameMode !== 'ONLINE') {
-                document.getElementById('viewOnlineLobby').classList.add('hidden');
-                updateWhisper('對手已連線加入！遊戲開始！');
-                startGameSession('ONLINE');
-                return;
-            }
-            if (gameMode === 'ONLINE' && data.updatedAt && data.currentTurn !== currentTurn) {
-                // 對手已落子，同步狀態
-                board = JSON.parse(data.board);
-                crystalBoard = JSON.parse(data.crystalBoard);
-                shieldBoard = JSON.parse(data.shieldBoard);
-                historyStack = JSON.parse(data.historyStack);
+            if(onlineRole === 'HOST') syncStateToPeer();
+        });
+
+        peerConn.on('data', function(data) {
+            if (gameMode !== 'ONLINE') return;
+            
+            if (data.type === 'SYNC') {
+                board = data.board;
+                crystalBoard = data.crystalBoard;
+                shieldBoard = data.shieldBoard;
+                historyStack = data.historyStack;
                 currentTurn = data.currentTurn;
                 isOver = data.isOver;
-                lastPos = data.lastPos ? JSON.parse(data.lastPos) : null;
-                winCoords = data.winCoords ? JSON.parse(data.winCoords) : null;
+                lastPos = data.lastPos;
+                winCoords = data.winCoords;
                 
                 playTone(currentTurn === BLACK ? 340 : 420, 0.06); 
                 renderBoard();
 
                 if (isOver && winCoords) {
-                   showResult('🎉 雲端對局結束！', '這是一場精彩的跨螢幕對決！', false);
+                   showResult('🎉 遠端對局結束！', '這是一場精彩的跨螢幕對決！', false);
                 }
+            } else if (data.type === 'RESTART') {
+                updateWhisper('🔄 房主已重新開始新局！');
+                startGameSession('ONLINE');
             }
-        }, function(error) { console.error("連線中斷:", error); });
+        });
+        
+        peerConn.on('close', function() {
+            updateWhisper('⚠️ 對手已斷線或離開遊戲！');
+        });
     }
 
-    function syncStateToFirebase() {
-       if(gameMode !== 'ONLINE' || !onlineRoomId) return;
-       var roomRef = window.fbDoc(window.fbDb, 'artifacts', window.fbAppId, 'public', 'data', 'gomokuRooms', onlineRoomId);
-       var state = {
-           board: JSON.stringify(board),
-           crystalBoard: JSON.stringify(crystalBoard),
-           shieldBoard: JSON.stringify(shieldBoard),
-           historyStack: JSON.stringify(historyStack),
+    function syncStateToPeer() {
+       if(gameMode !== 'ONLINE' || !peerConn || !peerConn.open) return;
+       peerConn.send({
+           type: 'SYNC',
+           board: board,
+           crystalBoard: crystalBoard,
+           shieldBoard: shieldBoard,
+           historyStack: historyStack,
            currentTurn: currentTurn,
            isOver: isOver,
-           lastPos: lastPos ? JSON.stringify(lastPos) : null,
-           winCoords: winCoords ? JSON.stringify(winCoords) : null,
-           updatedAt: Date.now()
-       };
-       window.fbSetDoc(roomRef, state, { merge: true }).catch(console.error);
+           lastPos: lastPos,
+           winCoords: winCoords
+       });
     }
 
     function startGameSession(mode) {
@@ -1116,7 +1118,7 @@
             showResult('🎉 恭喜獲勝！', '您在雲端對戰中擊敗了對手！', false);
             renderBoard();
         }
-        syncStateToFirebase();
+        syncStateToPeer();
         return;
       }
 
@@ -1191,7 +1193,8 @@
               return;
           }
           startGameSession('ONLINE');
-          syncStateToFirebase();
+          if (peerConn && peerConn.open) peerConn.send({ type: 'RESTART' });
+          syncStateToPeer();
           return;
       }
       startGameSession(gameMode);
@@ -1481,62 +1484,18 @@
     window.addEventListener('DOMContentLoaded', function() {
       initGrid();
       showMenu();
-    });
-
-    window.tryAutoJoin = async function() {
-       var params = new URLSearchParams(window.location.search);
-       var roomCode = params.get('room');
-       if (roomCode && roomCode.length === 6) {
-           document.getElementById('joinRoomInput').value = roomCode;
-           await openOnlineLobby();
-           joinOnlineRoom();
-           // 清除網址列的房號，避免重新整理再次觸發
-           try { window.history.replaceState({}, document.title, window.location.pathname); } catch(e) {}
-       }
-    };
-  </script>
-
-  <!-- Firebase 雲端同步模組 -->
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-    import { getFirestore, doc, setDoc, getDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-    window.fbInitPromise = (async () => {
-      try {
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'joan-gomoku-app';
-        const configStr = typeof __firebase_config !== 'undefined' ? __firebase_config : '{}';
-        const config = JSON.parse(configStr);
-        if (!config.apiKey) return false;
-        
-        const app = initializeApp(config);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-
-        const token = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-        if (token) await signInWithCustomToken(auth, token);
-        else await signInAnonymously(auth);
-
-        window.fbDb = db;
-        window.fbAuth = auth;
-        window.fbAppId = appId;
-        window.fbDoc = doc;
-        window.fbSetDoc = setDoc;
-        window.fbGetDoc = getDoc;
-        window.fbOnSnapshot = onSnapshot;
-        return true;
-      } catch (e) {
-        console.error("Firebase Initialization Failed:", e);
-        return false;
+      
+      // 自動偵測網址列的房號加入對局
+      var params = new URLSearchParams(window.location.search);
+      var roomCode = params.get('room');
+      if (roomCode && roomCode.length === 6) {
+          document.getElementById('joinRoomInput').value = roomCode;
+          openOnlineLobby();
+          setTimeout(function() { joinOnlineRoom(); }, 600); // 稍微延遲確保UI轉場
+          try { window.history.replaceState({}, document.title, window.location.pathname); } catch(e) {}
       }
-    })();
-
-    // 確保 Firebase 初始化完成後，檢查是否有網址邀請碼需要自動加入
-    window.fbInitPromise.then(function(success) {
-       if (success && window.tryAutoJoin) {
-           window.tryAutoJoin();
-       }
     });
+
   </script>
 </body>
 </html>
